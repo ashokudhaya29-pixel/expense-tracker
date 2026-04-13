@@ -37,7 +37,7 @@ async def whatsapp(request: Request):
         audio_file = download_audio(media_url)
     try:
         text = speech_to_text(audio_file)
-        print("Transcribed:", text)
+        print("📝 Transcription:", text)
     except Exception as e:
         print("❌ ERROR in speech:", str(e))
         text = "Could not process audio"
