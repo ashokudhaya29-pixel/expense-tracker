@@ -1,12 +1,15 @@
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import os
+import json
+from oauth2client.service_account import ServiceAccountCredentials  
 
 def save_to_sheet(amount, category):
 
     scope = ["https://www.googleapis.com/auth/spreadsheets",
              "https://www.googleapis.com/auth/drive"]
 
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
 
     sheet = client.open("Expense Tracker").sheet1

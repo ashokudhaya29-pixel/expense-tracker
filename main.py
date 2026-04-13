@@ -48,7 +48,9 @@ async def whatsapp(request: Request):
 
         resp.message(f"💰 Expense saved: {amount} - {category}")
         return Response(content=str(resp), media_type="application/xml")
-
+    
+    if text == "Could not process audio":
+        return PlainTextResponse("Audio failed")
     # =========================
     # 2. TEXT FLOW ONLY (SUMMARY)
     # =========================
