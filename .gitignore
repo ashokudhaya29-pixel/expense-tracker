@@ -1,0 +1,15 @@
+# Secrets
+.env
+credentials.json
+
+# Audio files
+*.wav
+*.ogg
+
+# ffmpeg
+ffmpeg*
+bin/
+
+# Python cache
+__pycache__/
+*.pyc
