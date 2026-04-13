@@ -2,10 +2,9 @@ fastapi
 uvicorn
 requests
 openai
-openai-whisper
-ffmpeg-python
+assemblyai
 gspread
 oauth2client
 twilio
 python-dotenv
-assemblyai
+python-multipart
