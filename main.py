@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from twilio.twiml.messaging_response import MessagingResponse
+from fastapi.responses import PlainTextResponse
 
 from utils import download_audio
 from speech import speech_to_text
@@ -34,10 +35,13 @@ async def whatsapp(request: Request):
     # =========================
     if media_url:
         audio_file = download_audio(media_url)
+    try:
         text = speech_to_text(audio_file)
-
-        print("🎤 Transcribed:", text)
-
+        print("Transcribed:", text)
+    except Exception as e:
+        print("❌ ERROR in speech:", str(e))
+        text = "Could not process audio"
+        
         amount, category = extract_expense(text)
 
         save_to_sheet(amount, category)
@@ -65,3 +69,5 @@ async def whatsapp(request: Request):
     # =========================
     resp.message("Send voice note or type 'summary'")
     return Response(content=str(resp), media_type="application/xml")
+
+    return PlainTextResponse("DONE")  
