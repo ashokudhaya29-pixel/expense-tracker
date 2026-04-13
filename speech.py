@@ -7,7 +7,7 @@ def speech_to_text(file_path):
     print("🎯 Sending to AssemblyAI...")
 
     config = aai.TranscriptionConfig(
-        speech_model="universal-2"
+        speech_model="universal"
     )
 
     transcriber = aai.Transcriber()
