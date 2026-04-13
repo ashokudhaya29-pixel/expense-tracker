@@ -1,21 +1,12 @@
-import whisper
+import assemblyai as aai
 import os
 
-# 👇 SET BOTH ffmpeg + ffprobe explicitly
-ffmpeg_path = r"C:\Users\monis\OneDrive\Gen Ai\Monthly Tracker\ffmpeg-8.1-essentials_build\bin"
-
-os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ["PATH"]
-os.environ["FFMPEG_BINARY"] = os.path.join(ffmpeg_path, "ffmpeg.exe")
-
-model = whisper.load_model("base")
+aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
 
 def speech_to_text(file_path):
-    print("Running local Whisper...")
+    print("Using AssemblyAI...")
 
-    result = model.transcribe(file_path)
+    transcriber = aai.Transcriber()
+    transcript = transcriber.transcribe(file_path)
 
-    text = result["text"]
-
-    print("Transcribed text:", text)
-
-    return text
+    return transcript.text
