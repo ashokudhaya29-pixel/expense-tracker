@@ -5,3 +5,5 @@ openai
 whisper
 gspread
 oauth2client
+twilio
+python-dotenv
