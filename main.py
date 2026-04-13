@@ -7,6 +7,10 @@ from speech import speech_to_text
 from llm import extract_expense
 from sheets import * # 👈 NEW FUNCTION
 
+import os
+
+port = int(os.environ.get("PORT", 10000))
+
 app = FastAPI()
 
 
