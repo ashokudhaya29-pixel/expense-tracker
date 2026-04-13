@@ -1,12 +1,13 @@
 import assemblyai as aai
-import os
 
-aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
+aai.settings.api_key = "YOUR_API_KEY"
 
 def speech_to_text(file_path):
-    print("Using AssemblyAI...")
+    config = aai.TranscriptionConfig(
+        speech_model="universal-2"   # 🔥 IMPORTANT FIX
+    )
 
     transcriber = aai.Transcriber()
-    transcript = transcriber.transcribe(file_path)
+    transcript = transcriber.transcribe(file_path, config=config)
 
     return transcript.text
