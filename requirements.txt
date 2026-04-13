@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+requests
+openai
+whisper
+gspread
+oauth2client
