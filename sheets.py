@@ -1,38 +1,52 @@
-import gspread
 import os
 import json
-from oauth2client.service_account import ServiceAccountCredentials  
+import gspread
+from google.oauth2.service_account import Credentials
+from collections import defaultdict
 
+
+# =========================
+# 🔐 AUTH (ENV BASED)
+# =========================
+def get_client():
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+
+    if not creds_json:
+        raise Exception("❌ GOOGLE_CREDENTIALS not set in environment")
+
+    creds_dict = json.loads(creds_json)
+
+    creds = Credentials.from_service_account_info(
+        creds_dict,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ],
+    )
+
+    return gspread.authorize(creds)
+
+
+# =========================
+# 📥 SAVE EXPENSE
+# =========================
 def save_to_sheet(amount, category):
+    gc = get_client()   # ✅ USE HERE
 
-    scope = ["https://www.googleapis.com/auth/spreadsheets",
-             "https://www.googleapis.com/auth/drive"]
-
-    creds_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-
-    sheet = client.open("Expense Tracker").sheet1
+    sheet = gc.open("Expense Tracker").sheet1
 
     sheet.append_row([amount, category])
 
-    print("Saved to Google Sheet")
+    print("✅ Saved to Google Sheet")
 
 
+# =========================
+# 📊 MONTHLY SUMMARY
+# =========================
 def get_monthly_summary():
-    import gspread
-    from oauth2client.service_account import ServiceAccountCredentials
-    from collections import defaultdict
+    gc = get_client()   # ✅ USE HERE
 
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive"
-    ]
-
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
-    client = gspread.authorize(creds)
-
-    sheet = client.open("Expense Tracker").sheet1
+    sheet = gc.open("Expense Tracker").sheet1
 
     data = sheet.get_all_records()
 
@@ -40,13 +54,17 @@ def get_monthly_summary():
     category_totals = defaultdict(int)
 
     for row in data:
-        amount = int(row.get("Amount", 0))
+        try:
+            amount = int(row.get("Amount", 0))
+        except:
+            amount = 0
+
         category = row.get("Category", "Other")
 
         total += amount
         category_totals[category] += amount
 
-    # Build response
+    # Format response
     summary = f"📊 Monthly Summary\n\nTotal: ₹{total}\n\n"
 
     for cat, amt in category_totals.items():
