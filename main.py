@@ -19,6 +19,8 @@ app = FastAPI()
 def home():
     return {"message": "Server is running ✅"}
 @app.post("/whatsapp")
+def test():
+    return {"message": "Webhook is working ✅"}
 async def whatsapp(request: Request):
 
     form = await request.form()
@@ -33,17 +35,23 @@ async def whatsapp(request: Request):
     # =========================
     # 1. AUDIO EXPENSE FLOW ONLY
     # =========================
-    if media_url:
-        audio_file = download_audio(media_url)
-    try:
-        text = speech_to_text(audio_file)
-        print("📝 Transcription:", text)
-    except Exception as e:
-        print("❌ ERROR in speech:", str(e))
-        text = "Could not process audio"
-        
-        amount, category = extract_expense(text)
+    if media_url is not None and media_url != "":
+        num_media = int(form.get("NumMedia", 0))
 
+        if num_media > 0:
+            media_url = form.get("MediaUrl0")
+
+            print("🎤 Processing audio:", media_url)
+        try:
+            print("RAW MEDIA VALUE:", repr(media_url))
+            print("Processing audio_file = download_audio(media_url)")
+            audio_file = download_audio(media_url)
+            text = speech_to_text(audio_file)
+            print("📝 Transcription:", text)
+        except Exception as e:
+            print("❌ ERROR in speech:", str(e))
+            text = "Could not process audio"
+        amount, category = extract_expense(text)
         save_to_sheet(amount, category)
 
         resp.message(f"💰 Expense saved: {amount} - {category}")
@@ -71,5 +79,3 @@ async def whatsapp(request: Request):
     # =========================
     resp.message("Send voice note or type 'summary'")
     return Response(content=str(resp), media_type="application/xml")
-
-    return PlainTextResponse("DONE")  
