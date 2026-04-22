@@ -1,15 +1,26 @@
 import assemblyai as aai
 import os
 
-aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")  
+# Use ENV (important for Render)
+aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
+
 
 def speech_to_text(file_path):
-    transcriber = aai.Transcriber()
+    try:
+        print("🎯 Sending to AssemblyAI...")
 
-    config = aai.TranscriptionConfig(
-        speech_model=aai.SpeechModel.best
-    )
+        transcriber = aai.Transcriber()
 
-    transcript = transcriber.transcribe(file_path, config=config)
+        config = aai.TranscriptionConfig(
+            speech_model=aai.SpeechModel.best
+        )
 
-    return transcript.text
+        transcript = transcriber.transcribe(file_path, config=config)
+
+        print("📝 Transcribed:", transcript.text)
+
+        return transcript.text or ""
+
+    except Exception as e:
+        print("❌ ERROR in speech:", str(e))
+        return ""
