@@ -25,67 +25,48 @@ async def whatsapp(request: Request):
     resp = MessagingResponse()
 
     incoming_msg = form.get("Body")
-    num_media = int(form.get("NumMedia", 0))
+    media_url = form.get("MediaUrl0")
 
-    print("BODY:", repr(incoming_msg))
-    print("NUM MEDIA:", num_media)
+    print("BODY:", incoming_msg)
+    print("MEDIA:", media_url)
 
     # =========================
-    # 🎤 AUDIO FLOW (STRICT)
+    # 1. AUDIO FLOW
     # =========================
-    if num_media > 0:
+    if media_url:
         try:
-            media_url = form.get("MediaUrl0")
-            print("🎤 MEDIA URL:", media_url)
-
             audio_file = download_audio(media_url)
             text = speech_to_text(audio_file)
 
             print("📝 Transcription:", text)
 
+            if not text:
+                resp.message("❌ Could not understand audio")
+                return Response(content=str(resp), media_type="application/xml")
+
             amount, category = extract_expense(text)
+
             save_to_sheet(amount, category)
 
-            resp.message(f"💰 Expense saved: ₹{amount} - {category}")
+            resp.message(f"💰 Expense saved: {amount} - {category}")
             return Response(content=str(resp), media_type="application/xml")
 
         except Exception as e:
-            print("❌ AUDIO ERROR:", e)
-            resp.message("❌ Failed to process audio")
+            print("❌ ERROR:", str(e))
+            resp.message("❌ Error processing audio")
             return Response(content=str(resp), media_type="application/xml")
 
     # =========================
-    # 📝 TEXT FLOW
-    # =========================
-    if incoming_msg and incoming_msg.strip():
-        msg = incoming_msg.lower().strip()
-
-        print("📝 TEXT MODE:", msg)
-
-        if msg == "summary":
-            summary = get_monthly_summary()
-            resp.message(summary)
-        else:
-            resp.message("Send voice note to add expense 🎙️ or type 'summary' 📊")
-
-        return Response(content=str(resp), media_type="application/xml")
-
-    # =========================
-    # DEFAULT
-    # =========================
-    resp.message("Send voice note or type 'summary'")
-    return Response(content=str(resp), media_type="application/xml")    # =========================
-    # 2. TEXT FLOW ONLY (SUMMARY)
+    # 2. TEXT FLOW
     # =========================
     if incoming_msg:
-
         msg = incoming_msg.lower().strip()
 
         if msg == "summary":
             summary = get_monthly_summary()
             resp.message(summary)
         else:
-            resp.message("Send voice note to add expense 🎙️ or type 'summary' 📊")
+            resp.message("Send voice note 🎙️ or type 'summary' 📊")
 
         return Response(content=str(resp), media_type="application/xml")
 
