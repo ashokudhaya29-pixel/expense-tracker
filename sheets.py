@@ -37,6 +37,32 @@ def get_monthly_summary():
 
     data = ws.get_all_records()
 
-    total = sum(int(row["Amount"]) for row in data if row["Amount"])
+    total = 0
+    category_totals = {}
 
-    return f"📊 Monthly Total: ₹{total}"
+    for row in data:
+        amount = row.get("Amount") or row.get("amount")
+        category = row.get("Category") or row.get("category") or "Other"
+
+        try:
+            amount = int(amount)
+        except:
+            continue
+
+        # Total
+        total += amount
+
+        # Category-wise
+        if category in category_totals:
+            category_totals[category] += amount
+        else:
+            category_totals[category] = amount
+
+    # 🧾 Build response
+    summary = "📊 Monthly Summary\n\n"
+    summary += f"💰 Total: ₹{total}\n\n"
+    summary += "\n📂 Category Breakdown:\n"
+    for cat, amt in category_totals.items():
+        summary += f"👉 {cat}: ₹{amt}\n"
+
+    return summary
