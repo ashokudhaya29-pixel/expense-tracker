@@ -1,73 +1,42 @@
-import os
-import json
 import gspread
+import json
+import os
 from google.oauth2.service_account import Credentials
-from collections import defaultdict
 
-
-# =========================
-# 🔐 AUTH (ENV BASED)
-# =========================
+# ✅ Central client (no credentials.json file)
 def get_client():
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
-
-    if not creds_json:
-        raise Exception("❌ GOOGLE_CREDENTIALS not set in environment")
-
-    creds_dict = json.loads(creds_json)
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
 
     creds = Credentials.from_service_account_info(
         creds_dict,
         scopes=[
             "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive"
         ],
     )
 
     return gspread.authorize(creds)
 
 
-# =========================
-# 📥 SAVE EXPENSE
-# =========================
+# ✅ Save expense
 def save_to_sheet(amount, category):
-    gc = get_client()   # ✅ USE HERE
+    gc = get_client()
 
-    sheet = gc.open("Expense Tracker").sheet1
+    sh = gc.open("Expense Tracker")
+    ws = sh.sheet1
 
-    sheet.append_row([amount, category])
-
-    print("✅ Saved to Google Sheet")
+    ws.append_row([amount, category])
 
 
-# =========================
-# 📊 MONTHLY SUMMARY
-# =========================
+# ✅ Monthly summary
 def get_monthly_summary():
-    gc = get_client()   # ✅ USE HERE
+    gc = get_client()
 
-    sheet = gc.open("Expense Tracker").sheet1
+    sh = gc.open("Expense Tracker")
+    ws = sh.sheet1
 
-    data = sheet.get_all_records()
+    data = ws.get_all_records()
 
-    total = 0
-    category_totals = defaultdict(int)
+    total = sum(int(row["Amount"]) for row in data if row["Amount"])
 
-    for row in data:
-        try:
-            amount = int(row.get("Amount", 0))
-        except:
-            amount = 0
-
-        category = row.get("Category", "Other")
-
-        total += amount
-        category_totals[category] += amount
-
-    # Format response
-    summary = f"📊 Monthly Summary\n\nTotal: ₹{total}\n\n"
-
-    for cat, amt in category_totals.items():
-        summary += f"{cat}: ₹{amt}\n"
-
-    return summary
+    return f"📊 Monthly Total: ₹{total}"
