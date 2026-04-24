@@ -23,8 +23,8 @@ async def whatsapp(request: Request):
 
     form = await request.form()
     resp = MessagingResponse()
-    user_number = form.get("From")  # 👈 ADD HERE
-    print("USER:", user_number)
+    user = form.get("From")   # 👈 ADD THIS
+    print("USER:", user)
 
     incoming_msg = form.get("Body")
     media_url = form.get("MediaUrl0")
@@ -48,7 +48,7 @@ async def whatsapp(request: Request):
 
             amount, category = extract_expense(text)
 
-            save_to_sheet(amount, category)
+            save_to_sheet(amount, category, user)
 
             resp.message(f"💰 Expense saved: {amount} - {category}")
             return Response(content=str(resp), media_type="application/xml")
@@ -65,7 +65,7 @@ async def whatsapp(request: Request):
         msg = incoming_msg.lower().strip()
 
         if msg == "summary":
-            summary = get_monthly_summary(user_number)
+            summary = get_monthly_summary(user)
             resp.message(summary)
         else:
             resp.message("Send voice note 🎙️ or type 'summary' 📊")
