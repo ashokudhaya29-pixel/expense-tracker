@@ -19,50 +19,42 @@ def get_client():
 
 
 # ✅ Save expense
-def save_to_sheet(amount, category):
+def save_to_sheet(amount, category, user):
     gc = get_client()
+    sh = gc.open("Expense Tracker").sheet1
 
-    sh = gc.open("Expense Tracker")
-    ws = sh.sheet1
+    from datetime import datetime
 
-    ws.append_row([amount, category])
-
+    sh.append_row([
+        str(datetime.now()),
+        user,
+        amount,
+        category
+    ])
 
 # ✅ Monthly summary
-def get_monthly_summary():
+def get_monthly_summary(user):
     gc = get_client()
+    sh = gc.open("Expense Tracker").sheet1
 
-    sh = gc.open("Expense Tracker")
-    ws = sh.sheet1
-
-    data = ws.get_all_records()
+    data = sh.get_all_records()
 
     total = 0
     category_totals = {}
 
     for row in data:
-        amount = row.get("Amount") or row.get("amount")
-        category = row.get("Category") or row.get("category") or "Other"
-
-        try:
-            amount = int(amount)
-        except:
+        if row["User"] != user:
             continue
 
-        # Total
-        total += amount
+        amt = int(row["Amount"])
+        cat = row["Category"]
 
-        # Category-wise
-        if category in category_totals:
-            category_totals[category] += amount
-        else:
-            category_totals[category] = amount
+        total += amt
+        category_totals[cat] = category_totals.get(cat, 0) + amt
 
-    # 🧾 Build response
-    summary = "📊 Monthly Summary\n\n"
-    summary += f"💰 Total: ₹{total}\n\n"
-    summary += "\n📂 Category Breakdown:\n"
+    result = f"📊 Your Monthly Summary\n\n💰 Total: ₹{total}\n\n"
+
     for cat, amt in category_totals.items():
-        summary += f"👉 {cat}: ₹{amt}\n"
+        result += f"👉 {cat}: ₹{amt}\n"
 
-    return summary
+    return result

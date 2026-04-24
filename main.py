@@ -23,6 +23,8 @@ async def whatsapp(request: Request):
 
     form = await request.form()
     resp = MessagingResponse()
+    user_number = form.get("From")  # 👈 ADD HERE
+    print("USER:", user_number)
 
     incoming_msg = form.get("Body")
     media_url = form.get("MediaUrl0")
@@ -63,7 +65,7 @@ async def whatsapp(request: Request):
         msg = incoming_msg.lower().strip()
 
         if msg == "summary":
-            summary = get_monthly_summary()
+            summary = get_monthly_summary(user_number)
             resp.message(summary)
         else:
             resp.message("Send voice note 🎙️ or type 'summary' 📊")
