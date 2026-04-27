@@ -1,12 +1,14 @@
-from fastapi import FastAPI
-Request from fastapi.responses import Response
+from fastapi import FastAPI,Request
+from fastapi.responses import Response
 from twilio.twiml.messaging_response import MessagingResponse
 from fastapi.responses import PlainTextResponse
 from utils import download_audio
 from speech import speech_to_text
 from llm import extract_expense
 from sheets import * # 👈 NEW FUNCTION
-import os port = int(os.environ.get("PORT", 10000)) 
+import os 
+
+port = int(os.environ.get("PORT", 10000)) 
 
 app = FastAPI()
 
