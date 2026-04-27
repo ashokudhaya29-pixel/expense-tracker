@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 requests
-openai
+groq
 assemblyai
 gspread
 oauth2client
