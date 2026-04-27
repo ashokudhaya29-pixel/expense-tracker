@@ -2,11 +2,11 @@ import re
 
 # 🔥 Smart keyword mapping
 CATEGORY_MAP = {
-    "food": ["swiggy", "zomato", "hotel", "restaurant", "cafe", "pizza", "burger", "lunch", "dinner"],
-    "grocery": ["dmart", "grocery", "supermarket", "vegetables", "fruits", "rice", "milk"],
+    "food": ["swiggy", "zomato", "hotel", "restaurant", "tea", "pizza", "tiffin", "lunch", "dinner","briyani"],
+    "grocery": ["dmart", "grocery", "supermarket", "vegetables", "fruits", "rice", "milk","Chicken","mutton"],
     "travel": ["uber", "ola", "rapido", "bus", "train", "petrol", "diesel"],
     "shopping": ["amazon", "flipkart", "shopping", "clothes"],
-    "entertainment": ["movie", "netflix", "hotstar"],
+    "entertainment": ["movie", "netflix", "hotstar","OTT"],
 }
 
 def extract_expense(text):
