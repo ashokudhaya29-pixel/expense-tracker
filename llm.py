@@ -1,35 +1,38 @@
+from sheets import get_learned_categories
 import re
 
-# 🔥 Smart keyword mapping
-CATEGORY_MAP = {
-    "food": ["swiggy", "zomato", "hotel", "restaurant", "tea", "pizza", "tiffin", "lunch", "dinner","briyani"],
-    "grocery": ["dmart", "grocery", "supermarket", "vegetables", "fruits", "rice", "milk","Chicken","mutton"],
-    "travel": ["uber", "ola", "rapido", "bus", "train", "petrol", "diesel"],
-    "shopping": ["amazon", "flipkart", "shopping", "clothes"],
-    "entertainment": ["movie", "netflix", "hotstar","OTT"],
-}
-
-def extract_expense(text):
+def extract_expense(text, user):
     try:
+        if not text:
+            return 0, "Other"
+
         text = text.lower()
 
-        # 💰 Extract amount
+        # 💰 amount
         amount_match = re.search(r"\d+", text)
         amount = int(amount_match.group()) if amount_match else 0
 
-        # 🧠 Detect category (better scoring logic)
-        category_scores = {}
+        # 🧠 STEP 1: Learned categories
+        learned_map = get_learned_categories(user)
+
+        for word in text.split():
+            if word in learned_map:
+                return amount, learned_map[word]
+
+        # 🧠 STEP 2: Default rules
+        CATEGORY_MAP = {
+            "food": ["swiggy", "zomato", "hotel", "restaurant", "cafe", "pizza", "burger", "lunch", "dinner"],
+            "grocery": ["dmart", "grocery", "supermarket", "vegetables", "fruits"],
+            "travel": ["uber", "ola", "rapido", "bus", "train", "உபர"],
+        }
 
         for cat, keywords in CATEGORY_MAP.items():
-            score = sum(1 for word in keywords if word in text)
-            if score > 0:
-                category_scores[cat] = score
+            for word in keywords:
+                if word in text:
+                    return amount, cat.capitalize()
 
-        if category_scores:
-            category = max(category_scores, key=category_scores.get).capitalize()
-        else:
-            category = "Other"
-        return amount, category
+        return amount, "Other"
+
     except Exception as e:
-        print("❌ ERROR in LLM:", str(e))
+        print("❌ ERROR:", str(e))
         return 0, "Other"

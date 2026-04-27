@@ -16,7 +16,26 @@ def get_client():
     )
 
     return gspread.authorize(creds)
+def get_learned_categories(user):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").worksheet("Learning")
 
+    data = sheet.get_all_records()
+
+    learned = {}
+
+    for row in data:
+        if row["User"] == user:
+            learned[row["Keyword"].lower()] = row["Category"]
+
+    return learned
+
+
+def save_learning(user, keyword, category):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").worksheet("Learning")
+
+    sheet.append_row([user, keyword.lower(), category])
 
 # ✅ Save expense
 def save_to_sheet(amount, category, user):

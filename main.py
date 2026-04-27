@@ -46,7 +46,7 @@ async def whatsapp(request: Request):
                 resp.message("❌ Could not understand audio")
                 return Response(content=str(resp), media_type="application/xml")
 
-            amount, category = extract_expense(text)
+            amount, category = extract_expense(text, user)
 
             save_to_sheet(amount, category, user)
 
