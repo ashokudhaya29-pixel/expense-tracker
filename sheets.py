@@ -16,6 +16,7 @@ def get_client():
     )
 
     return gspread.authorize(creds)
+
 def get_learned_categories(user):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Learning")
@@ -50,6 +51,38 @@ def save_to_sheet(amount, category, user):
         amount,
         category
     ])
+
+def get_last_entries(user, limit=10):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").sheet1
+
+    data = sheet.get_all_values()
+
+    user_rows = []
+    
+    # Skip header
+    for i in range(1, len(data)):
+        if data[i][0] == user:
+            user_rows.append((i+1, data[i]))  # (row_number, row_data)
+
+    last_entries = user_rows[-limit:]
+
+    return last_entries
+
+def delete_by_serial(user, serial):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").sheet1
+
+    entries = get_last_entries(user)
+
+    if serial < 1 or serial > len(entries):
+        return "⚠️ Invalid selection"
+
+    row_number = entries[serial - 1][0]
+
+    sheet.delete_rows(row_number)
+
+    return f"✅ Deleted entry #{serial}"
 
 # ✅ Monthly summary
 def get_monthly_summary(user):

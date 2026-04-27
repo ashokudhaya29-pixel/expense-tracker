@@ -77,6 +77,43 @@ async def whatsapp(request: Request):
             return Response(str(resp), media_type="application/xml")
 
     # =========================
+    # 🗑 DELETE COMMAND
+    # =========================
+    if msg.startswith("delete"):
+    parts = msg.split()
+
+    # 👉 Case 1: Just "delete"
+    if len(parts) == 1:
+        entries = get_last_entries(user)
+
+        if not entries:
+            resp.message("⚠️ No entries found")
+            return Response(str(resp), media_type="application/xml")
+
+        reply = "🧾 Last Entries:\n\n"
+
+        for i, (_, row) in enumerate(entries, start=1):
+            amount = row[1]
+            category = row[2]
+            reply += f"{i}. {amount} - {category}\n"
+
+        reply += "\nReply: delete <number>"
+
+        resp.message(reply)
+        return Response(str(resp), media_type="application/xml")
+
+    # 👉 Case 2: delete 2
+    elif len(parts) == 2:
+        try:
+            serial = int(parts[1])
+            result = delete_by_serial(user, serial)
+            resp.message(result)
+        except:
+            resp.message("⚠️ Invalid format. Use: delete 2")
+
+        return Response(str(resp), media_type="application/xml")
+
+    # =========================
     # 💬 TEXT FLOW
     # =========================
     if incoming_msg:
