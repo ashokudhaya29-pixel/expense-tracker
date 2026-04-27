@@ -80,7 +80,7 @@ async def whatsapp(request: Request):
     # 🗑 DELETE COMMAND
     # =========================
     if msg.startswith("delete"):
-    parts = msg.split()
+        parts = msg.split()
 
     # 👉 Case 1: Just "delete"
     if len(parts) == 1:
