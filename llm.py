@@ -29,6 +29,7 @@ def extract_expense(text):
             category = max(category_scores, key=category_scores.get).capitalize()
         else:
             category = "Other"
+        return amount, category
     except Exception as e:
         print("❌ ERROR in LLM:", str(e))
         return 0, "Other"
