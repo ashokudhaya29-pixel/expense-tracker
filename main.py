@@ -11,7 +11,9 @@ import os port = int(os.environ.get("PORT", 10000))
 app = FastAPI()
 
 
-
+@app.get("/")
+def home(): 
+    return {"message": "Server is running ✅"}
 @app.post("/whatsapp")
 async def whatsapp(request: Request):
 
@@ -19,7 +21,7 @@ async def whatsapp(request: Request):
     resp = MessagingResponse()
 
     user = form.get("From")
-    incoming_msg = form.get("Body") or ""
+    incoming_msg = form.get("Body")
     media_url = form.get("MediaUrl0")
 
     print("USER:", user)
