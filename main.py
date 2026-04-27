@@ -32,6 +32,26 @@ async def whatsapp(request: Request):
     print("BODY:", incoming_msg)
     print("MEDIA:", media_url)
 
+    msg = incoming_msg.lower().strip()
+
+# =========================
+# 🧠 LEARNING COMMAND
+# =========================
+if msg.startswith("learn"):
+    parts = msg.split()
+
+    if len(parts) >= 3:
+        keyword = parts[1]
+        category = parts[2].capitalize()
+
+        save_learning(user, keyword, category)
+
+        resp.message(f"✅ Learned: {keyword} → {category}")
+    else:
+        resp.message("Usage: learn <keyword> <category>")
+
+    return Response(str(resp), media_type="application/xml")
+
     # =========================
     # 1. AUDIO FLOW
     # =========================
