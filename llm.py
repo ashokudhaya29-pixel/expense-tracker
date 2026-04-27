@@ -22,7 +22,7 @@ CATEGORY_RULES = {
     "snacks": "Snacks",
     "juice": "Snacks",
 
-    "dmart": "Grocery",
+    "Zepto": "Grocery",
     "grocery": "Grocery",
     "rice": "Grocery",
     "vegetables": "Grocery",
