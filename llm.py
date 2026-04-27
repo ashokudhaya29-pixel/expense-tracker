@@ -7,6 +7,7 @@ def extract_expense(text, user):
             return 0, "Other"
 
         text = text.lower()
+        text=re.sub(r"[^\w\s]","",text)
 
         # 💰 amount
         amount_match = re.search(r"\d+", text)
