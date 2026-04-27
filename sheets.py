@@ -57,16 +57,33 @@ def get_monthly_summary(user):
             category_totals[category] = amount
 
     # Build response
-    response = "📊 Monthly Summary\n\n"
-    response += f"💰 Total: ₹{int(total)}\n\n"
+    response = f"📊 Total Expense: ₹{total}\n\n"
+
+    # Category breakdown
+    top_category = None
+    top_amount = 0
 
     for cat, amt in category_totals.items():
-        percent = (amt / total) * 100 if total > 0 else 0
-        response += f"{cat}: ₹{int(amt)} ({percent:.0f}%)\n"
+        percent = (amt / total * 100) if total > 0 else 0
+        response += f"{cat}: ₹{amt} ({percent:.1f}%)\n"
 
-    # Insight
-    if category_totals:
-        top_category = max(category_totals, key=category_totals.get)
-        response += f"\n🔥 You spend most on {top_category}"
+        if amt > top_amount:
+            top_amount = amt
+            top_category = cat
+
+    # =========================
+    # 🔥 SMART INSIGHTS
+    # =========================
+    response += "\n💡 Insights:\n"
+
+    if top_category:
+        percent = (top_amount / total * 100) if total > 0 else 0
+        response += f"• Highest spend: {top_category} ({percent:.0f}%)\n"
+
+        if percent > 50:
+            response += f"⚠️ You are spending a lot on {top_category}\n"
+
+    if total == 0:
+        response += "No expenses recorded yet."
 
     return response
