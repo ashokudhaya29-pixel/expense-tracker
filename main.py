@@ -1,4 +1,4 @@
-from fastapi import FastAPI,
+from fastapi import FastAPI
 Request from fastapi.responses import Response
 from twilio.twiml.messaging_response import MessagingResponse
 from fastapi.responses import PlainTextResponse
