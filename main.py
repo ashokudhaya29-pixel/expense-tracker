@@ -65,6 +65,7 @@ async def whatsapp(request: Request):
         msg = incoming_msg.lower().strip()
 
         if msg == "summary":
+            user = form.get("From")
             summary = get_monthly_summary(user)
             resp.message(summary)
         else:

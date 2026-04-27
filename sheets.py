@@ -35,7 +35,7 @@ def save_to_sheet(amount, category, user):
 # ✅ Monthly summary
 def get_monthly_summary(user):
     gc = get_client()
-    sheet = gc.open("Expenses").sheet1
+    sheet = gc.open("Expense Tracker").sheet1
 
     data = sheet.get_all_records()
 
@@ -46,7 +46,7 @@ def get_monthly_summary(user):
         if row["User"] != user:
             continue
 
-        amount = int(row["Amount"])
+        amount = float(row["Amount"])
         category = row["Category"]
 
         total += amount
@@ -56,16 +56,17 @@ def get_monthly_summary(user):
         else:
             category_totals[category] = amount
 
-    # 🔥 Build response
-    summary = f"📊 Monthly Summary\n\n💰 Total: ₹{total}\n\n"
+    # Build response
+    response = "📊 Monthly Summary\n\n"
+    response += f"💰 Total: ₹{int(total)}\n\n"
 
     for cat, amt in category_totals.items():
         percent = (amt / total) * 100 if total > 0 else 0
-        summary += f"{cat}: ₹{amt} ({percent:.0f}%)\n"
+        response += f"{cat}: ₹{int(amt)} ({percent:.0f}%)\n"
 
-    # 🔥 Smart Insight
+    # Insight
     if category_totals:
         top_category = max(category_totals, key=category_totals.get)
-        summary += f"\n🔥 Insight: You spent most on {top_category}"
+        response += f"\n🔥 You spend most on {top_category}"
 
-    return summary
+    return response
