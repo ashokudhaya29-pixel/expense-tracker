@@ -13,15 +13,11 @@ def extract_expense(text):
     try:
         text = text.lower()
 
-        # =========================
         # 💰 Extract amount
-        # =========================
         amount_match = re.search(r"\d+", text)
         amount = int(amount_match.group()) if amount_match else 0
 
-        # =========================
-        # 🧠 Detect category
-        # =========================
+        # 🧠 Detect category (better scoring logic)
         category_scores = {}
 
         for cat, keywords in CATEGORY_MAP.items():
@@ -33,3 +29,6 @@ def extract_expense(text):
             category = max(category_scores, key=category_scores.get).capitalize()
         else:
             category = "Other"
+    except Exception as e:
+        print("❌ ERROR in LLM:", str(e))
+        return 0, "Other"
