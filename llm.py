@@ -16,9 +16,9 @@ def extract_expense(text, user):
         # 🧠 STEP 1: Learned categories
         learned_map = get_learned_categories(user)
 
-        for word in text.split():
-            if word in learned_map:
-                return amount, learned_map[word]
+        for keyword in learned_map:
+            if keyword in text:
+                return amount, learned_map[keyword]
 
         # 🧠 STEP 2: Default rules
         CATEGORY_MAP = {
