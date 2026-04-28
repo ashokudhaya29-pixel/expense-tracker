@@ -119,6 +119,7 @@ async def whatsapp(request: Request):
     # ✏️ EDIT COMMAND
     # =========================
     if msg.startswith("edit"):
+        print("EDIT BLOCK HIT")
         parts = msg.split()
 
         if len(parts) == 1:
