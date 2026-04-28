@@ -115,10 +115,12 @@ async def whatsapp(request: Request):
     # =========================
     # ✏️ EDIT COMMAND
     # =========================
+        # =========================
+    # ✏️ EDIT COMMAND
+    # =========================
     if msg.startswith("edit"):
         parts = msg.split()
 
-        # Case 1: just "edit" → show last entries
         if len(parts) == 1:
             entries = get_last_entries(user)
 
@@ -139,7 +141,6 @@ async def whatsapp(request: Request):
             resp.message(reply)
             return Response(str(resp), media_type="application/xml")
 
-        # Case 2: edit 1 amount 350
         elif len(parts) >= 4:
             try:
                 serial = int(parts[1])
