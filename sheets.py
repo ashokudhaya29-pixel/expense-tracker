@@ -20,7 +20,7 @@ def get_client():
 
 
 def clean_user(user):
-    return str(user).replace("whatsapp:", "").strip()
+    return str(user).replace("whatsapp:", "").replace("+", "").strip()
 
 
 def current_month_ist():
