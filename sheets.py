@@ -49,26 +49,37 @@ def save_to_sheet(amount, category, user):
     date = datetime.now().strftime("%Y-%m-%d")
 
     sheet.append_row([date, user, amount, category])
-    
+
 def get_last_entries(user, limit=10):
     gc = get_client()
     sheet = gc.open("Expense Tracker").sheet1
 
     data = sheet.get_all_values()
 
+    print("===== DEBUG START =====")
+    print("INPUT USER:", user)
+    print("TOTAL ROWS:", len(data))
+
     user_rows = []
 
     for i in range(1, len(data)):
         row = data[i]
 
-        row_user = row[1].strip()   # column B
+        print(f"ROW {i}: {row}")   # 👈 PRINT FULL ROW
 
-        print(f"DEBUG → Sheet User: {row_user} | Input User: {user}")
+        # Try BOTH columns to be sure
+        possible_user_1 = row[0]
+        possible_user_2 = row[1]
 
-        if row_user == user:
+        print("Check col0:", possible_user_1)
+        print("Check col1:", possible_user_2)
+
+        if user in possible_user_1 or user in possible_user_2:
+            print("✅ MATCH FOUND")
             user_rows.append((i + 1, row))
 
-    print("DEBUG → Found entries:", user_rows)
+    print("FINAL MATCHES:", user_rows)
+    print("===== DEBUG END =====")
 
     return user_rows[-limit:]
 
