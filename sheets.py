@@ -40,18 +40,16 @@ def save_learning(user, keyword, category):
 
 # ✅ Save expense
 def save_to_sheet(amount, category, user):
+    user = user.replace("whatsapp:", "").strip()
+
     gc = get_client()
-    sh = gc.open("Expense Tracker").sheet1
+    sheet = gc.open("Expense Tracker").sheet1
 
     from datetime import datetime
+    date = datetime.now().strftime("%Y-%m-%d")
 
-    sh.append_row([
-        str(datetime.now()),
-        user,
-        amount,
-        category
-    ])
-
+    sheet.append_row([date, user, amount, category])
+    
 def get_last_entries(user, limit=10):
     gc = get_client()
     sheet = gc.open("Expense Tracker").sheet1
@@ -59,15 +57,20 @@ def get_last_entries(user, limit=10):
     data = sheet.get_all_values()
 
     user_rows = []
-    
-    # Skip header
+
     for i in range(1, len(data)):
-        if data[i][0] == user:
-            user_rows.append((i+1, data[i]))  # (row_number, row_data)
+        row = data[i]
 
-    last_entries = user_rows[-limit:]
+        row_user = row[1].strip()   # column B
 
-    return last_entries
+        print(f"DEBUG → Sheet User: {row_user} | Input User: {user}")
+
+        if row_user == user:
+            user_rows.append((i + 1, row))
+
+    print("DEBUG → Found entries:", user_rows)
+
+    return user_rows[-limit:]
 
 def delete_by_serial(user, serial):
     gc = get_client()

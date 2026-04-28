@@ -22,7 +22,7 @@ async def whatsapp(request: Request):
     form = await request.form()
     resp = MessagingResponse()
 
-    user = form.get("From")
+    user = form.get("From").replace("whatsapp:", "").strip()
     incoming_msg = form.get("Body") or ""
     media_url = form.get("MediaUrl0")
 
