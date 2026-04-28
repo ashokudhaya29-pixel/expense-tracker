@@ -98,6 +98,32 @@ def delete_by_serial(user, serial):
 
     return f"✅ Deleted entry #{serial}"
 
+def update_entry_by_serial(user, serial, field, new_value):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").sheet1
+
+    entries = get_last_entries(user)
+
+    if serial < 1 or serial > len(entries):
+        return "⚠️ Invalid selection"
+
+    row_number = entries[serial - 1][0]
+
+    field = field.lower()
+
+    # Sheet columns:
+    # A Date | B User | C Amount | D Category
+    if field == "amount":
+        sheet.update_cell(row_number, 3, new_value)
+        return f"✅ Updated entry #{serial} amount to ₹{new_value}"
+
+    elif field == "category":
+        sheet.update_cell(row_number, 4, new_value.capitalize())
+        return f"✅ Updated entry #{serial} category to {new_value.capitalize()}"
+
+    else:
+        return "⚠️ Use: edit <number> amount <value> OR edit <number> category <value>"
+
 # ✅ Monthly summary
 def get_monthly_summary(user):
     gc = get_client()

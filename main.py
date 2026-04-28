@@ -112,7 +112,52 @@ async def whatsapp(request: Request):
             resp.message("⚠️ Invalid format. Use: delete 2")
 
         return Response(str(resp), media_type="application/xml")
+    # =========================
+    # ✏️ EDIT COMMAND
+    # =========================
+    if msg.startswith("edit"):
+        parts = msg.split()
 
+        # Case 1: just "edit" → show last entries
+        if len(parts) == 1:
+            entries = get_last_entries(user)
+
+            if not entries:
+                resp.message("⚠️ No entries found")
+                return Response(str(resp), media_type="application/xml")
+
+            reply = "✏️ Last Entries:\n\n"
+
+            for i, (_, row) in enumerate(entries, start=1):
+                date = row[0]
+                amount = row[2]
+                category = row[3]
+                reply += f"{i}. ₹{amount} - {category} ({date})\n"
+
+            reply += "\nReply:\nedit 1 amount 350\nedit 1 category Grocery"
+
+            resp.message(reply)
+            return Response(str(resp), media_type="application/xml")
+
+        # Case 2: edit 1 amount 350
+        elif len(parts) >= 4:
+            try:
+                serial = int(parts[1])
+                field = parts[2]
+                new_value = " ".join(parts[3:])
+
+                result = update_entry_by_serial(user, serial, field, new_value)
+                resp.message(result)
+
+            except Exception as e:
+                print("❌ Edit error:", str(e))
+                resp.message("⚠️ Invalid format. Use: edit 1 amount 350")
+
+            return Response(str(resp), media_type="application/xml")
+
+        else:
+            resp.message("Usage:\nedit\nedit 1 amount 350\nedit 1 category Grocery")
+            return Response(str(resp), media_type="application/xml")
     # =========================
     # 💬 TEXT FLOW
     # =========================
