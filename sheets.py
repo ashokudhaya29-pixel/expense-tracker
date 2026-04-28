@@ -95,15 +95,22 @@ def get_salary(user):
 
     data = sheet.get_all_records()
 
+    print("🔍 GET SALARY USER:", user)
+    print("🔍 GET SALARY MONTH:", month)
+    print("🔍 BUDGET DATA:", data)
+
     for row in data:
         row_user = clean_user(row.get("User", ""))
         row_month = str(row.get("Month", "")).strip()
 
+        print("CHECK:", row_user, row_month)
+
         if row_user == user and row_month == month:
+            print("✅ SALARY FOUND:", row.get("Salary", 0))
             return float(row.get("Salary", 0))
 
+    print("❌ SALARY NOT FOUND")
     return 0
-
 
 def get_month_expense(user):
     gc = get_client()
