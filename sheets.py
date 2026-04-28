@@ -17,6 +17,9 @@ def get_client():
 
     return gspread.authorize(creds)
 
+def clean_user(user):
+    return user.replace("whatsapp:", "").strip()
+
 def get_learned_categories(user):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Learning")
@@ -44,13 +47,13 @@ def set_salary(user, salary):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Budgets")
 
+    user = clean_user(user)
     month = datetime.now().strftime("%Y-%m")
 
     data = sheet.get_all_values()
 
-    # Check if user already has salary for this month
     for i in range(1, len(data)):
-        row_user = data[i][0]
+        row_user = clean_user(data[i][0])
         row_month = data[i][1]
 
         if row_user == user and row_month == month:
@@ -60,20 +63,23 @@ def set_salary(user, salary):
     sheet.append_row([user, month, salary])
     return f"✅ Salary saved for {month}: ₹{salary}"
 
-
 def get_salary(user):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Budgets")
 
+    user = clean_user(user)
     month = datetime.now().strftime("%Y-%m")
+
     data = sheet.get_all_records()
 
     for row in data:
-        if row["User"] == user and row["Month"] == month:
-            return float(row["Salary"])
+        row_user = clean_user(str(row.get("User", "")))
+        row_month = str(row.get("Month", ""))
+
+        if row_user == user and row_month == month:
+            return float(row.get("Salary", 0))
 
     return 0
-
 
 def get_month_expense(user):
     gc = get_client()
@@ -102,8 +108,8 @@ def get_balance_report(user):
     balance = salary - spent
 
     if salary == 0:
-        return "⚠️ Salary not set. Send: salary 50000"
-
+        return "⚠️ Salary not set. Send: salary"
+    
     message = "💰 Balance Report\n\n"
     message += f"Salary: ₹{int(salary)}\n"
     message += f"Spent: ₹{int(spent)}\n"
