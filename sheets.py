@@ -38,6 +38,133 @@ def save_learning(user, keyword, category):
 
     sheet.append_row([user, keyword.lower(), category])
 
+from datetime import datetime, timedelta
+
+def set_salary(user, salary):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").worksheet("Budgets")
+
+    month = datetime.now().strftime("%Y-%m")
+
+    data = sheet.get_all_values()
+
+    # Check if user already has salary for this month
+    for i in range(1, len(data)):
+        row_user = data[i][0]
+        row_month = data[i][1]
+
+        if row_user == user and row_month == month:
+            sheet.update_cell(i + 1, 3, salary)
+            return f"✅ Salary updated for {month}: ₹{salary}"
+
+    sheet.append_row([user, month, salary])
+    return f"✅ Salary saved for {month}: ₹{salary}"
+
+
+def get_salary(user):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").worksheet("Budgets")
+
+    month = datetime.now().strftime("%Y-%m")
+    data = sheet.get_all_records()
+
+    for row in data:
+        if row["User"] == user and row["Month"] == month:
+            return float(row["Salary"])
+
+    return 0
+
+
+def get_month_expense(user):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").sheet1
+
+    data = sheet.get_all_records()
+    current_month = datetime.now().strftime("%Y-%m")
+
+    total = 0
+
+    for row in data:
+        if row["User"] != user:
+            continue
+
+        date = str(row["Date"])
+
+        if date.startswith(current_month):
+            total += float(row["Amount"])
+
+    return total
+
+
+def get_balance_report(user):
+    salary = get_salary(user)
+    spent = get_month_expense(user)
+    balance = salary - spent
+
+    if salary == 0:
+        return "⚠️ Salary not set. Send: salary 50000"
+
+    message = "💰 Balance Report\n\n"
+    message += f"Salary: ₹{int(salary)}\n"
+    message += f"Spent: ₹{int(spent)}\n"
+    message += f"Remaining: ₹{int(balance)}\n"
+
+    percent = (spent / salary) * 100 if salary > 0 else 0
+
+    if percent >= 90:
+        message += "\n🚨 Alert: You used more than 90% of your salary!"
+    elif percent >= 75:
+        message += "\n⚠️ Warning: You used more than 75% of your salary."
+    elif percent >= 50:
+        message += "\n💡 Note: You used more than 50% of your salary."
+    else:
+        message += "\n✅ Spending is under control."
+
+    return message
+
+
+def get_weekly_report(user):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").sheet1
+
+    data = sheet.get_all_records()
+
+    today = datetime.now()
+    week_start = today - timedelta(days=7)
+
+    total = 0
+    category_totals = {}
+
+    for row in data:
+        if row["User"] != user:
+            continue
+
+        date_text = str(row["Date"]).split()[0]
+
+        try:
+            expense_date = datetime.strptime(date_text, "%Y-%m-%d")
+        except:
+            continue
+
+        if expense_date >= week_start:
+            amount = float(row["Amount"])
+            category = row["Category"]
+
+            total += amount
+            category_totals[category] = category_totals.get(category, 0) + amount
+
+    message = "📅 Weekly Report\n\n"
+    message += f"Total spent this week: ₹{int(total)}\n\n"
+
+    for cat, amt in category_totals.items():
+        percent = (amt / total) * 100 if total > 0 else 0
+        message += f"{cat}: ₹{int(amt)} ({percent:.0f}%)\n"
+
+    if total == 0:
+        message += "No expenses recorded this week."
+
+    return message
+
 # ✅ Save expense
 def save_to_sheet(amount, category, user):
     user = user.replace("whatsapp:", "").strip()
@@ -179,3 +306,4 @@ def get_monthly_summary(user):
         response += "No expenses recorded yet."
 
     return response
+

@@ -162,7 +162,30 @@ async def whatsapp(request: Request):
             return Response(str(resp), media_type="application/xml")
     # =========================
     # 💬 TEXT FLOW
-    # =========================
+        # =========================
+    if msg.startswith("salary"):
+        parts = msg.split()
+
+        if len(parts) >= 2 and parts[1].isdigit():
+            salary = int(parts[1])
+            result = set_salary(user, salary)
+            resp.message(result)
+        else:
+            resp.message("Usage: salary 50000")
+
+        return Response(str(resp), media_type="application/xml")
+
+
+    if msg == "balance":
+        report = get_balance_report(user)
+        resp.message(report)
+        return Response(str(resp), media_type="application/xml")
+
+
+    if msg == "weekly":
+        report = get_weekly_report(user)
+        resp.message(report)
+        return Response(str(resp), media_type="application/xml")
     if incoming_msg:
         if msg == "summary":
             summary = get_monthly_summary(user)
