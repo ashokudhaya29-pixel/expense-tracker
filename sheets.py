@@ -65,7 +65,7 @@ def save_learning(user, keyword, category):
 # =========================
 # Salary / Budget
 # =========================
-def set_salary(user, salary):
+def set_salary(user, amount):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Budgets")
 
@@ -83,8 +83,8 @@ def set_salary(user, salary):
         if row_user == user and row_month == month and row_type == "base":
             sheet.delete_rows(i + 1)
 
-    sheet.append_row([user, month,"base", salary])
-    return f"✅ Base saved for {month}: ₹{salary}"
+    sheet.append_row([user, month,"base", amount])
+    return f"✅ Base saved for {month}: ₹{amount}"
 
 def add_salary(user, amount):
     gc = get_client()
@@ -123,7 +123,7 @@ def get_salary(user):
                 total += float(row.get("Amount", 0))
             except:
                 pass
-            print("✅ SALARY FOUND:", row.get("Salary", 0))
+            print("✅ SALARY FOUND:", row.get("amount", 0))
             return float(row.get("Salary", 0))
 
     print("❌ SALARY NOT FOUND")
@@ -157,19 +157,19 @@ def get_month_expense(user):
 
 
 def get_balance_report(user):
-    salary = get_salary(user)
+    Amount = get_salary(user)
     spent = get_month_expense(user)
-    balance = salary - spent
+    balance = Amount - spent
 
-    if salary == 0:
+    if Amount == 0:
         return "⚠️ Salary not set. Send: salary 50000"
 
     message = "💰 Balance Report\n\n"
-    message += f"Salary: ₹{int(salary)}\n"
+    message += f"Salary: ₹{int(Amount)}\n"
     message += f"Spent: ₹{int(spent)}\n"
     message += f"Remaining: ₹{int(balance)}\n"
 
-    percent = (spent / salary) * 100 if salary > 0 else 0
+    percent = (spent / Amount) * 100 if Amount > 0 else 0
 
     if percent >= 90:
         message += "\n🚨 Alert: You used more than 90% of your salary!"

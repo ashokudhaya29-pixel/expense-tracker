@@ -167,7 +167,7 @@ async def whatsapp(request: Request):
         parts = msg.split()
 
         if len(parts) >= 2 and parts[1].isdigit():
-            salary = int(parts[1])
+            Amount = int(parts[1])
             result = set_salary(user, amount)
             resp.message(result)
         else:
