@@ -206,32 +206,32 @@ def get_monthly_summary(user):
             continue
 
         try:
-            salary = float(row.get("salary", 0))
+            amount = float(row.get("Amount", 0))
         except:
-            salary = 0
+            amount = 0
 
         category = row.get("Category", "Other")
 
-        total += salary
-        category_totals[category] = category_totals.get(category, 0) + salary
+        total += amount
+        category_totals[category] = category_totals.get(category, 0) + amount
 
     response = f"📊 Total Expense: ₹{int(total)}\n\n"
 
     top_category = None
-    top_salary = 0
+    top_amount = 0
 
     for cat, amt in category_totals.items():
         percent = (amt / total * 100) if total > 0 else 0
         response += f"{cat}: ₹{int(amt)} ({percent:.1f}%)\n"
 
-        if amt > top_salary:
-            top_salary = amt
+        if amt > top_amount:
+            top_amount = amt
             top_category = cat
 
     response += "\n💡 Insights:\n"
 
     if top_category:
-        percent = (top_salary / total * 100) if total > 0 else 0
+        percent = (top_amount / total * 100) if total > 0 else 0
         response += f"• Highest spend: {top_category} ({percent:.0f}%)\n"
 
         if percent > 50:
@@ -275,14 +275,14 @@ def get_weekly_report(user):
 
         if expense_date >= week_start:
             try:
-                salary = float(row.get("salary", 0))
+                amount = float(row.get("Amount", 0))
             except:
-                salary = 0
+                amount = 0
 
             category = row.get("Category", "Other")
 
-            total += salary
-            category_totals[category] = category_totals.get(category, 0) + salary
+            total += amount
+            category_totals[category] = category_totals.get(category, 0) + amount
 
     message = "📅 Weekly Report\n\n"
     message += f"Total spent this week: ₹{int(total)}\n\n"
