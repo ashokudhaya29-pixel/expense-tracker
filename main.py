@@ -12,6 +12,8 @@ port = int(os.environ.get("PORT", 10000))
 
 app = FastAPI()
 
+pending_expenses = {}
+
 
 @app.get("/")
 def home(): 
@@ -20,7 +22,46 @@ def home():
 async def whatsapp(request: Request):
 
     form = await request.form()
-    resp = MessagingResponse()
+    resp = MessagingResponse() 
+
+    body_lower = body.lower().strip()
+
+    if user in pending_expenses:
+        pending = pending_expenses[user]
+
+        if body_lower == "yes":
+            save_to_sheet(pending["amount"], pending["category"], user)
+            del pending_expenses[user]
+
+            reply.message("✅ Expense saved successfully.")
+            return Response(str(reply), media_type="application/xml")
+
+        elif body_lower == "no":
+            del pending_expenses[user]
+
+            reply.message("❌ Expense cancelled.")
+            return Response(str(reply), media_type="application/xml")
+
+        elif body_lower.startswith("correct"):
+            try:
+                parts = body.split()
+
+                new_amount = float(parts[1])
+                new_category = parts[2].capitalize()
+
+                save_to_sheet(new_amount, new_category, user)
+                del pending_expenses[user]
+
+                reply.message(
+                    f"✅ Corrected and saved:\n\n"
+                    f"Amount: ₹{int(new_amount)}\n"
+                    f"Category: {new_category}"
+                )
+                return Response(str(reply), media_type="application/xml")
+
+            except:
+                reply.message("⚠️ Use format: correct 500 Food")
+                return Response(str(reply), media_type="application/xml") 
 
     user = form.get("From").replace("whatsapp:", "").strip()
     incoming_msg = form.get("Body") or ""
@@ -32,6 +73,7 @@ async def whatsapp(request: Request):
 
     msg = incoming_msg.lower().strip()
 
+    
     # =========================
     # 🧠 LEARNING COMMAND
     # =========================
@@ -64,12 +106,24 @@ async def whatsapp(request: Request):
                 resp.message("❌ Could not understand audio")
                 return Response(str(resp), media_type="application/xml")
 
-            salary, category = extract_expense(text, user)
+            amount, category = extract_expense(text, user)
 
-            save_to_sheet(salary, category, user)
+            pending_expenses[user] = {
+                "amount": amount,
+                "category": category
+            }
 
-            resp.message(f"💰 Expense saved: {salary} - {category}")
-            return Response(str(resp), media_type="application/xml")
+            reply.message(
+                    f"📝 Please confirm:\n\n"
+                    f"Amount: ₹{amount}\n"
+                    f"Category: {category}\n\n"
+                    f"Reply:\n"
+                    f"yes = save\n"
+                    f"no = cancel\n"
+                    f"correct 500 Food = update and save"
+                )
+
+            return Response(str(reply), media_type="application/xml")
 
         except Exception as e:
             print("❌ ERROR:", str(e))

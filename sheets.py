@@ -179,14 +179,14 @@ def get_balance_report(user):
 # =========================
 # Expense Save / Summary
 # =========================
-def save_to_sheet(salary, category, user):
+def save_to_sheet(amount, category, user):
     gc = get_client()
     sheet = gc.open("Expense Tracker").sheet1
 
     user = clean_user(user)
     date = current_date_ist()
 
-    sheet.append_row([date, user, salary, category])
+    sheet.append_row([date, user, amount, category])
 
 
 def get_monthly_summary(user):
