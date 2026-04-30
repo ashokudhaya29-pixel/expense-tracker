@@ -65,7 +65,7 @@ def save_learning(user, keyword, category):
 # =========================
 # Salary / Budget
 # =========================
-def set_salary(user, amount):
+def set_salary(user, salary):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Budgets")
 
@@ -83,18 +83,18 @@ def set_salary(user, amount):
         if row_user == user and row_month == month and row_type == "base":
             sheet.delete_rows(i + 1)
 
-    sheet.append_row([user, month,"base", amount])
-    return f"✅ Base saved for {month}: ₹{amount}"
+    sheet.append_row([user, month,"base", salary])
+    return f"✅ Base saved for {month}: ₹{salary}"
 
-def add_salary(user, amount):
+def add_salary(user, salary):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Budgets")
 
     user
     month= current_month_ist()
 
-    sheet.append_row([user, month, "extra", amount])
-    return f"✅ Added ₹{amount} to salary for {month}"
+    sheet.append_row([user, month, "extra", salary])
+    return f"✅ Added ₹{salary} to salary for {month}"
 
 
 def get_salary(user):
@@ -120,10 +120,10 @@ def get_salary(user):
 
         if row_user == user and row_month == month:
             try:
-                total += float(row.get("Amount", 0))
+                total += float(row.get("salary", 0))
             except:
                 pass
-            print("✅ SALARY FOUND:", row.get("amount", 0))
+            print("✅ SALARY FOUND:", row.get("salary", 0))
             return float(row.get("Salary", 0))
 
     print("❌ SALARY NOT FOUND")
@@ -149,7 +149,7 @@ def get_month_expense(user):
 
         if date_text.startswith(month):
             try:
-                total += float(row.get("Amount", 0))
+                total += float(row.get("salary", 0))
             except:
                 pass
 
@@ -157,19 +157,19 @@ def get_month_expense(user):
 
 
 def get_balance_report(user):
-    Amount = get_salary(user)
+    salary = get_salary(user)
     spent = get_month_expense(user)
-    balance = Amount - spent
+    balance = salary - spent
 
-    if Amount == 0:
+    if salary == 0:
         return "⚠️ Salary not set. Send: salary 50000"
 
     message = "💰 Balance Report\n\n"
-    message += f"Salary: ₹{int(Amount)}\n"
+    message += f"Salary: ₹{int(salary)}\n"
     message += f"Spent: ₹{int(spent)}\n"
     message += f"Remaining: ₹{int(balance)}\n"
 
-    percent = (spent / Amount) * 100 if Amount > 0 else 0
+    percent = (spent / salary) * 100 if salary > 0 else 0
 
     if percent >= 90:
         message += "\n🚨 Alert: You used more than 90% of your salary!"
@@ -186,14 +186,14 @@ def get_balance_report(user):
 # =========================
 # Expense Save / Summary
 # =========================
-def save_to_sheet(amount, category, user):
+def save_to_sheet(salary, category, user):
     gc = get_client()
     sheet = gc.open("Expense Tracker").sheet1
 
     user = clean_user(user)
     date = current_date_ist()
 
-    sheet.append_row([date, user, amount, category])
+    sheet.append_row([date, user, salary, category])
 
 
 def get_monthly_summary(user):
@@ -213,32 +213,32 @@ def get_monthly_summary(user):
             continue
 
         try:
-            amount = float(row.get("Amount", 0))
+            salary = float(row.get("salary", 0))
         except:
-            amount = 0
+            salary = 0
 
         category = row.get("Category", "Other")
 
-        total += amount
-        category_totals[category] = category_totals.get(category, 0) + amount
+        total += salary
+        category_totals[category] = category_totals.get(category, 0) + salary
 
     response = f"📊 Total Expense: ₹{int(total)}\n\n"
 
     top_category = None
-    top_amount = 0
+    top_salary = 0
 
     for cat, amt in category_totals.items():
         percent = (amt / total * 100) if total > 0 else 0
         response += f"{cat}: ₹{int(amt)} ({percent:.1f}%)\n"
 
-        if amt > top_amount:
-            top_amount = amt
+        if amt > top_salary:
+            top_salary = amt
             top_category = cat
 
     response += "\n💡 Insights:\n"
 
     if top_category:
-        percent = (top_amount / total * 100) if total > 0 else 0
+        percent = (top_salary / total * 100) if total > 0 else 0
         response += f"• Highest spend: {top_category} ({percent:.0f}%)\n"
 
         if percent > 50:
@@ -282,14 +282,14 @@ def get_weekly_report(user):
 
         if expense_date >= week_start:
             try:
-                amount = float(row.get("Amount", 0))
+                salary = float(row.get("salary", 0))
             except:
-                amount = 0
+                salary = 0
 
             category = row.get("Category", "Other")
 
-            total += amount
-            category_totals[category] = category_totals.get(category, 0) + amount
+            total += salary
+            category_totals[category] = category_totals.get(category, 0) + salary
 
     message = "📅 Weekly Report\n\n"
     message += f"Total spent this week: ₹{int(total)}\n\n"
@@ -357,12 +357,12 @@ def update_entry_by_serial(user, serial, field, new_value):
     row_number = entries[serial - 1][0]
     field = field.lower()
 
-    if field == "amount":
+    if field == "salary":
         sheet.update_cell(row_number, 3, new_value)
-        return f"✅ Updated entry #{serial} amount to ₹{new_value}"
+        return f"✅ Updated entry #{serial} salary to ₹{new_value}"
 
     if field == "category":
         sheet.update_cell(row_number, 4, new_value.capitalize())
         return f"✅ Updated entry #{serial} category to {new_value.capitalize()}"
 
-    return "⚠️ Use: edit <number> amount <value> OR edit <number> category <value>"
+    return "⚠️ Use: edit <number> salary <value> OR edit <number> category <value>"

@@ -9,16 +9,16 @@ def extract_expense(text, user):
         text = text.lower()
         text=re.sub(r"[^\w\s]","",text)
 
-        # 💰 amount
-        amount_match = re.search(r"\d+", text)
-        amount = int(amount_match.group()) if amount_match else 0
+        # 💰 salary
+        salary_match = re.search(r"\d+", text)
+        salary = int(salary_match.group()) if salary_match else 0
 
         # 🧠 STEP 1: Learned categories
         learned_map = get_learned_categories(user)
 
         for keyword in learned_map:
             if keyword in text:
-                return amount, learned_map[keyword]
+                return salary, learned_map[keyword]
 
         # 🧠 STEP 2: Default rules
         CATEGORY_MAP = {
@@ -30,9 +30,9 @@ def extract_expense(text, user):
         for cat, keywords in CATEGORY_MAP.items():
             for word in keywords:
                 if word in text:
-                    return amount, cat.capitalize()
+                    return salary, cat.capitalize()
 
-        return amount, "Other"
+        return salary, "Other"
 
     except Exception as e:
         print("❌ ERROR:", str(e))

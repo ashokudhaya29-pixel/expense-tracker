@@ -64,11 +64,11 @@ async def whatsapp(request: Request):
                 resp.message("❌ Could not understand audio")
                 return Response(str(resp), media_type="application/xml")
 
-            amount, category = extract_expense(text, user)
+            salary, category = extract_expense(text, user)
 
-            save_to_sheet(amount, category, user)
+            save_to_sheet(salary, category, user)
 
-            resp.message(f"💰 Expense saved: {amount} - {category}")
+            resp.message(f"💰 Expense saved: {salary} - {category}")
             return Response(str(resp), media_type="application/xml")
 
         except Exception as e:
@@ -93,9 +93,9 @@ async def whatsapp(request: Request):
             reply = "🧾 Last Entries:\n\n"
 
             for i, (_, row) in enumerate(entries, start=1):
-                amount = row[1]
+                salary = row[1]
                 category = row[2]
-                reply += f"{i}. {amount} - {category}\n"
+                reply += f"{i}. {salary} - {category}\n"
 
             reply += "\nReply: delete <number>"
 
@@ -133,11 +133,11 @@ async def whatsapp(request: Request):
 
             for i, (_, row) in enumerate(entries, start=1):
                 date = row[0]
-                amount = row[2]
+                salary = row[2]
                 category = row[3]
-                reply += f"{i}. ₹{amount} - {category} ({date})\n"
+                reply += f"{i}. ₹{salary} - {category} ({date})\n"
 
-            reply += "\nReply:\nedit 1 amount 350\nedit 1 category Grocery"
+            reply += "\nReply:\nedit 1 salary 350\nedit 1 category Grocery"
 
             resp.message(reply)
             return Response(str(resp), media_type="application/xml")
@@ -153,12 +153,12 @@ async def whatsapp(request: Request):
 
             except Exception as e:
                 print("❌ Edit error:", str(e))
-                resp.message("⚠️ Invalid format. Use: edit 1 amount 350")
+                resp.message("⚠️ Invalid format. Use: edit 1 salary 350")
 
             return Response(str(resp), media_type="application/xml")
 
         else:
-            resp.message("Usage:\nedit\nedit 1 amount 350\nedit 1 category Grocery")
+            resp.message("Usage:\nedit\nedit 1 salary 350\nedit 1 category Grocery")
             return Response(str(resp), media_type="application/xml")
     # =========================
     # 💬 TEXT FLOW
@@ -167,8 +167,8 @@ async def whatsapp(request: Request):
         parts = msg.split()
 
         if len(parts) >= 2 and parts[1].isdigit():
-            Amount = int(parts[1])
-            result = set_salary(user, amount)
+            salary = int(parts[1])
+            result = set_salary(user, salary)
             resp.message(result)
         else:
             resp.message("Usage: salary 50000")
@@ -179,8 +179,8 @@ async def whatsapp(request: Request):
         parts = msg.split()
 
         if len(parts) >= 2 and parts[1].isdigit():
-            amount = int(parts[1])
-            result = add_salary(user, amount)
+            salary = int(parts[1])
+            result = add_salary(user, salary)
             resp.message(result)
         else:
             resp.message("Usage: addsalary 5000")

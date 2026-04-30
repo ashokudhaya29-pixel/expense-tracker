@@ -6,14 +6,14 @@ def generate_summary(data):
         if len(row) < 2:
             continue
 
-        amount = int(row[0])
+        salary = int(row[0])
         category = row[1]
 
-        total += amount
+        total += salary
 
         if category in category_total:
-            category_total[category] += amount
+            category_total[category] += salary
         else:
-            category_total[category] = amount
+            category_total[category] = salary
 
     return total, category_total
