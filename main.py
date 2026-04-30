@@ -29,10 +29,10 @@ async def whatsapp(request: Request):
 
     resp = MessagingResponse() 
     print("USER:", user)
-    #print("BODY:", incoming_msg)
+    print("BODY:", body)
     print("MEDIA:", media_url)
 
-    #msg = incoming_msg.lower().strip()
+    msg = body.lower().strip()
 
     body_lower = body.lower().strip()
 
