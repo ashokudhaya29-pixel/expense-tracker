@@ -1,54 +1,61 @@
-from fastapi import FastAPI,Request
+from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from twilio.twiml.messaging_response import MessagingResponse
-from fastapi.responses import PlainTextResponse
 from utils import download_audio
 from speech import speech_to_text
 from llm import extract_expense
-from sheets import * # 👈 NEW FUNCTION
-import os 
+from sheets import *
+import os
 
-port = int(os.environ.get("PORT", 10000)) 
+port = int(os.environ.get("PORT", 10000))
 
 app = FastAPI()
 
+# Temporary memory for confirmation before saving
 pending_expenses = {}
 
 
 @app.get("/")
-def home(): 
+def home():
     return {"message": "Server is running ✅"}
+
+
 @app.post("/whatsapp")
 async def whatsapp(request: Request):
-
     form = await request.form()
+
     user = form.get("From", "")
     body = form.get("Body", "").strip()
     media_url = form.get("MediaUrl0")
 
-    resp = MessagingResponse() 
-    body_lower = body.lower().strip()
+    resp = MessagingResponse()
+
+    msg = body.lower().strip()
+
     print("USER:", user)
     print("BODY:", body)
     print("MEDIA:", media_url)
 
+    # =========================
+    # ✅ CONFIRMATION FLOW
+    # =========================
     if user in pending_expenses:
         pending = pending_expenses[user]
 
-        if body_lower == "yes":
+        if msg == "yes":
             save_to_sheet(pending["amount"], pending["category"], user)
             del pending_expenses[user]
 
-            reply.message("✅ Expense saved successfully.")
-            return Response(str(reply), media_type="application/xml")
+            resp.message("✅ Expense saved successfully.")
+            return Response(str(resp), media_type="application/xml")
 
-        elif body_lower == "no":
+        elif msg == "no":
             del pending_expenses[user]
 
-            reply.message("❌ Expense cancelled.")
-            return Response(str(reply), media_type="application/xml")
+            resp.message("❌ Expense cancelled.")
+            return Response(str(resp), media_type="application/xml")
 
-        elif body_lower.startswith("correct"):
+        elif msg.startswith("correct"):
             try:
                 parts = body.split()
 
@@ -58,41 +65,30 @@ async def whatsapp(request: Request):
                 save_to_sheet(new_amount, new_category, user)
                 del pending_expenses[user]
 
-                reply.message(
+                resp.message(
                     f"✅ Corrected and saved:\n\n"
                     f"Amount: ₹{int(new_amount)}\n"
                     f"Category: {new_category}"
                 )
-                return Response(str(reply), media_type="application/xml")
+                return Response(str(resp), media_type="application/xml")
 
-            except:
-                reply.message("⚠️ Use format: correct 500 Food")
-                return Response(str(reply), media_type="application/xml") 
-    # 2. Voice message handling
-    if media_url:
-        # download audio
-        # transcription
-        # amount, category = extract_expense(transcription)
+            except Exception as e:
+                print("❌ Correction error:", str(e))
+                resp.message("⚠️ Use format: correct 500 Food")
+                return Response(str(resp), media_type="application/xml")
 
-        pending_expenses[user] = {
-            "amount": amount,
-            "category": category
-        }
+        else:
+            resp.message(
+                "⚠️ Please reply:\n"
+                "yes = save\n"
+                "no = cancel\n"
+                "correct 500 Food = update and save"
+            )
+            return Response(str(resp), media_type="application/xml")
 
-        reply.message(
-            f"📝 Please confirm:\n\n"
-            f"Amount: ₹{amount}\n"
-            f"Category: {category}\n\n"
-            f"Reply:\n"
-            f"yes = save\n"
-            f"no = cancel\n"
-            f"correct 500 Food = update and save"
-        )
-        return Response(str(reply), media_type="application/xml")    
-    
-    
     # =========================
     # 🧠 LEARNING COMMAND
+    # Example: learn zepto Grocery
     # =========================
     if msg.startswith("learn"):
         parts = msg.split()
@@ -102,7 +98,6 @@ async def whatsapp(request: Request):
             category = parts[2].capitalize()
 
             save_learning(user, keyword, category)
-
             resp.message(f"✅ Learned: {keyword} → {category}")
         else:
             resp.message("Usage: learn <keyword> <category>")
@@ -130,17 +125,17 @@ async def whatsapp(request: Request):
                 "category": category
             }
 
-            reply.message(
-                    f"📝 Please confirm:\n\n"
-                    f"Amount: ₹{amount}\n"
-                    f"Category: {category}\n\n"
-                    f"Reply:\n"
-                    f"yes = save\n"
-                    f"no = cancel\n"
-                    f"correct 500 Food = update and save"
-                )
+            resp.message(
+                f"📝 Please confirm:\n\n"
+                f"Amount: ₹{amount}\n"
+                f"Category: {category}\n\n"
+                f"Reply:\n"
+                f"yes = save\n"
+                f"no = cancel\n"
+                f"correct 500 Food = update and save"
+            )
 
-            return Response(str(reply), media_type="application/xml")
+            return Response(str(resp), media_type="application/xml")
 
         except Exception as e:
             print("❌ ERROR:", str(e))
@@ -148,12 +143,68 @@ async def whatsapp(request: Request):
             return Response(str(resp), media_type="application/xml")
 
     # =========================
+    # 💰 SALARY COMMAND
+    # Example: salary 30000
+    # =========================
+    if msg.startswith("salary"):
+        parts = msg.split()
+
+        if len(parts) >= 2 and parts[1].isdigit():
+            salary = int(parts[1])
+            result = set_salary(user, salary)
+            resp.message(result)
+        else:
+            resp.message("Usage: salary 50000")
+
+        return Response(str(resp), media_type="application/xml")
+
+    # =========================
+    # ➕ ADD SALARY COMMAND
+    # Example: addsalary 5000
+    # =========================
+    if msg.startswith("addsalary"):
+        parts = msg.split()
+
+        if len(parts) >= 2 and parts[1].isdigit():
+            salary = int(parts[1])
+            result = add_salary(user, salary)
+            resp.message(result)
+        else:
+            resp.message("Usage: addsalary 5000")
+
+        return Response(str(resp), media_type="application/xml")
+
+    # =========================
+    # 💰 BALANCE COMMAND
+    # =========================
+    if msg == "balance":
+        report = get_balance_report(user)
+        resp.message(report)
+        return Response(str(resp), media_type="application/xml")
+
+    # =========================
+    # 📊 SUMMARY COMMAND
+    # =========================
+    if msg == "summary":
+        summary = get_monthly_summary(user)
+        resp.message(summary)
+        return Response(str(resp), media_type="application/xml")
+
+    # =========================
+    # 📅 WEEKLY COMMAND
+    # =========================
+    if msg == "weekly":
+        report = get_weekly_report(user)
+        resp.message(report)
+        return Response(str(resp), media_type="application/xml")
+
+    # =========================
     # 🗑 DELETE COMMAND
+    # Example: delete / delete 2
     # =========================
     if msg.startswith("delete"):
         parts = msg.split()
 
-    # 👉 Case 1: Just "delete"
         if len(parts) == 1:
             entries = get_last_entries(user)
 
@@ -161,36 +212,35 @@ async def whatsapp(request: Request):
                 resp.message("⚠️ No entries found")
                 return Response(str(resp), media_type="application/xml")
 
-            reply = "🧾 Last Entries:\n\n"
+            message = "🧾 Last Entries:\n\n"
 
             for i, (_, row) in enumerate(entries, start=1):
-                salary = row[1]
-                category = row[2]
-                reply += f"{i}. {salary} - {category}\n"
+                date = row[0]
+                amount = row[2]
+                category = row[3]
+                message += f"{i}. ₹{amount} - {category} ({date})\n"
 
-            reply += "\nReply: delete <number>"
+            message += "\nReply: delete <number>"
 
-            resp.message(reply)
+            resp.message(message)
             return Response(str(resp), media_type="application/xml")
 
-    # 👉 Case 2: delete 2
         elif len(parts) == 2:
             try:
                 serial = int(parts[1])
                 result = delete_by_serial(user, serial)
                 resp.message(result)
-            except:
+            except Exception as e:
+                print("❌ Delete error:", str(e))
                 resp.message("⚠️ Invalid format. Use: delete 2")
 
             return Response(str(resp), media_type="application/xml")
-        # =========================
-    # ✏️ EDIT COMMAND
+
     # =========================
-        # =========================
     # ✏️ EDIT COMMAND
+    # Example: edit / edit 1 amount 350 / edit 1 category Food
     # =========================
     if msg.startswith("edit"):
-        print("EDIT BLOCK HIT")
         parts = msg.split()
 
         if len(parts) == 1:
@@ -200,17 +250,17 @@ async def whatsapp(request: Request):
                 resp.message("⚠️ No entries found")
                 return Response(str(resp), media_type="application/xml")
 
-            reply = "✏️ Last Entries:\n\n"
+            message = "✏️ Last Entries:\n\n"
 
             for i, (_, row) in enumerate(entries, start=1):
                 date = row[0]
-                salary = row[2]
+                amount = row[2]
                 category = row[3]
-                reply += f"{i}. ₹{salary} - {category} ({date})\n"
+                message += f"{i}. ₹{amount} - {category} ({date})\n"
 
-            reply += "\nReply:\nedit 1 salary 350\nedit 1 category Grocery"
+            message += "\nReply:\nedit 1 amount 350\nedit 1 category Grocery"
 
-            resp.message(reply)
+            resp.message(message)
             return Response(str(resp), media_type="application/xml")
 
         elif len(parts) >= 4:
@@ -224,61 +274,28 @@ async def whatsapp(request: Request):
 
             except Exception as e:
                 print("❌ Edit error:", str(e))
-                resp.message("⚠️ Invalid format. Use: edit 1 salary 350")
+                resp.message("⚠️ Invalid format. Use: edit 1 amount 350")
 
             return Response(str(resp), media_type="application/xml")
 
         else:
-            resp.message("Usage:\nedit\nedit 1 salary 350\nedit 1 category Grocery")
+            resp.message(
+                "Usage:\n"
+                "edit\n"
+                "edit 1 amount 350\n"
+                "edit 1 category Grocery"
+            )
             return Response(str(resp), media_type="application/xml")
-    # =========================
-    # 💬 TEXT FLOW
-        # =========================
-    if msg.startswith("salary"):
-        parts = msg.split()
-
-        if len(parts) >= 2 and parts[1].isdigit():
-            salary = int(parts[1])
-            result = set_salary(user, salary)
-            resp.message(result)
-        else:
-            resp.message("Usage: salary 50000")
-
-        return Response(str(resp), media_type="application/xml")
-    
-    if msg.startswith("addsalary"):
-        parts = msg.split()
-
-        if len(parts) >= 2 and parts[1].isdigit():
-            salary = int(parts[1])
-            result = add_salary(user, salary)
-            resp.message(result)
-        else:
-            resp.message("Usage: addsalary 5000")
-
-        return Response(str(resp), media_type="application/xml")
-
-    if msg == "balance":
-        report = get_balance_report(user)
-        resp.message(report)
-        return Response(str(resp), media_type="application/xml")
-
-
-    if msg == "weekly":
-        report = get_weekly_report(user)
-        resp.message(report)
-        return Response(str(resp), media_type="application/xml")
-    if incoming_msg:
-        if msg == "summary":
-            summary = get_monthly_summary(user)
-            resp.message(summary)
-        else:
-            resp.message("Send voice note 🎙️ or type 'summary' 📊")
-
-        return Response(str(resp), media_type="application/xml")
 
     # =========================
-    # DEFAULT
+    # DEFAULT MESSAGE
     # =========================
-    resp.message("Send voice note or type 'summary'")
-    return Response(str(resp), media_type="application/xml")    
+    resp.message(
+        "Send voice note 🎙️ or type:\n"
+        "summary\n"
+        "weekly\n"
+        "balance\n"
+        "salary 50000\n"
+        "addsalary 5000"
+    )
+    return Response(str(resp), media_type="application/xml")
