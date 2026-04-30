@@ -124,10 +124,10 @@ def get_salary(user):
             except:
                 pass
             print("✅ SALARY FOUND:", row.get("salary", 0))
-            return float(row.get("Salary", 0))
+            return float(total)
 
     print("❌ SALARY NOT FOUND")
-    return total
+    return 0
 
 def get_month_expense(user):
     gc = get_client()
