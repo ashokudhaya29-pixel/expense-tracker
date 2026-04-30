@@ -26,15 +26,11 @@ async def whatsapp(request: Request):
     body = form.get("Body", "").strip()
     media_url = form.get("MediaUrl0")
 
-
     resp = MessagingResponse() 
+    body_lower = body.lower().strip()
     print("USER:", user)
     print("BODY:", body)
     print("MEDIA:", media_url)
-
-    msg = body.lower().strip()
-
-    body_lower = body.lower().strip()
 
     if user in pending_expenses:
         pending = pending_expenses[user]
@@ -72,8 +68,27 @@ async def whatsapp(request: Request):
             except:
                 reply.message("⚠️ Use format: correct 500 Food")
                 return Response(str(reply), media_type="application/xml") 
+    # 2. Voice message handling
+    if media_url:
+        # download audio
+        # transcription
+        # amount, category = extract_expense(transcription)
 
-    
+        pending_expenses[user] = {
+            "amount": amount,
+            "category": category
+        }
+
+        reply.message(
+            f"📝 Please confirm:\n\n"
+            f"Amount: ₹{amount}\n"
+            f"Category: {category}\n\n"
+            f"Reply:\n"
+            f"yes = save\n"
+            f"no = cancel\n"
+            f"correct 500 Food = update and save"
+        )
+        return Response(str(reply), media_type="application/xml")    
     
     
     # =========================
