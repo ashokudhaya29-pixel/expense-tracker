@@ -22,7 +22,17 @@ def home():
 async def whatsapp(request: Request):
 
     form = await request.form()
+    user = form.get("From", "")
+    body = form.get("Body", "").strip()
+    media_url = form.get("MediaUrl0")
+
+
     resp = MessagingResponse() 
+    print("USER:", user)
+    #print("BODY:", incoming_msg)
+    print("MEDIA:", media_url)
+
+    #msg = incoming_msg.lower().strip()
 
     body_lower = body.lower().strip()
 
@@ -63,16 +73,8 @@ async def whatsapp(request: Request):
                 reply.message("⚠️ Use format: correct 500 Food")
                 return Response(str(reply), media_type="application/xml") 
 
-    user = form.get("From").replace("whatsapp:", "").strip()
-    incoming_msg = form.get("Body") or ""
-    media_url = form.get("MediaUrl0")
-
-    print("USER:", user)
-    print("BODY:", incoming_msg)
-    print("MEDIA:", media_url)
-
-    msg = incoming_msg.lower().strip()
-
+    
+    
     
     # =========================
     # 🧠 LEARNING COMMAND
