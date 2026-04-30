@@ -74,16 +74,27 @@ def set_salary(user, salary):
 
     data = sheet.get_all_values()
 
-    for i in range(1, len(data)):
+    for i in range(len(data)-1,0,-1):
         row_user = clean_user(data[i][0])
-        row_month = str(data[i][1]).strip()
+        row_month = data[i][1]
+        row_type = data[i][2]
+    
 
-        if row_user == user and row_month == month:
-            sheet.update_cell(i + 1, 3, salary)
-            return f"✅ Salary updated for {month}: ₹{salary}"
+        if row_user == user and row_month == month and row_type == "base":
+            sheet.delete_rows(i + 1)
 
-    sheet.append_row([user, month, salary])
-    return f"✅ Salary saved for {month}: ₹{salary}"
+    sheet.append_row([user, month,"base", salary])
+    return f"✅ Base saved for {month}: ₹{salary}"
+
+def add_salary(user, amount):
+    gc = get_client()
+    sheet = gc.open("Expense Tracker").worksheet("Budgets")
+
+    user
+    month= current_month_ist()
+
+    sheet.append_row([user, month, "extra", amount])
+    return f"✅ Added ₹{amount} to salary for {month}"
 
 
 def get_salary(user):
@@ -94,6 +105,8 @@ def get_salary(user):
     month = current_month_ist()
 
     data = sheet.get_all_records()
+
+    total = 0
 
     print("🔍 GET SALARY USER:", user)
     print("🔍 GET SALARY MONTH:", month)
@@ -106,11 +119,15 @@ def get_salary(user):
         print("CHECK:", row_user, row_month)
 
         if row_user == user and row_month == month:
+            try:
+                total += float(row.get("Amount", 0))
+            except:
+                pass
             print("✅ SALARY FOUND:", row.get("Salary", 0))
             return float(row.get("Salary", 0))
 
     print("❌ SALARY NOT FOUND")
-    return 0
+    return total
 
 def get_month_expense(user):
     gc = get_client()

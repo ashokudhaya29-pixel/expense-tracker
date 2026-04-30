@@ -168,13 +168,24 @@ async def whatsapp(request: Request):
 
         if len(parts) >= 2 and parts[1].isdigit():
             salary = int(parts[1])
-            result = set_salary(user, salary)
+            result = set_salary(user, amount)
             resp.message(result)
         else:
             resp.message("Usage: salary 50000")
 
         return Response(str(resp), media_type="application/xml")
+    
+    if msg.startswith("addsalary"):
+        parts = msg.split()
 
+        if len(parts) >= 2 and parts[1].isdigit():
+            amount = int(parts[1])
+            result = add_salary(user, amount)
+            resp.message(result)
+        else:
+            resp.message("Usage: addsalary 5000")
+
+        return Response(str(resp), media_type="application/xml")
 
     if msg == "balance":
         report = get_balance_report(user)
