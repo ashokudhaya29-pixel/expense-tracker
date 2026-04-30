@@ -90,12 +90,11 @@ def add_salary(user, salary):
     gc = get_client()
     sheet = gc.open("Expense Tracker").worksheet("Budgets")
 
-    user
-    month= current_month_ist()
+    user = clean_user(user)
+    month = current_month_ist()
 
     sheet.append_row([user, month, "extra", salary])
     return f"✅ Added ₹{salary} to salary for {month}"
-
 
 def get_salary(user):
     gc = get_client()
@@ -105,7 +104,6 @@ def get_salary(user):
     month = current_month_ist()
 
     data = sheet.get_all_records()
-
     total = 0
 
     print("🔍 GET SALARY USER:", user)
@@ -116,18 +114,14 @@ def get_salary(user):
         row_user = clean_user(row.get("User", ""))
         row_month = str(row.get("Month", "")).strip()
 
-        print("CHECK:", row_user, row_month)
-
         if row_user == user and row_month == month:
             try:
-                total += float(row.get("salary", 0))
+                total += float(row.get("Salary", 0))
             except:
                 pass
-            print("✅ SALARY FOUND:", row.get("salary", 0))
-            return float(total)
 
-    print("❌ SALARY NOT FOUND")
-    return 0
+    print("✅ TOTAL SALARY:", total)
+    return total
 
 def get_month_expense(user):
     gc = get_client()
@@ -149,12 +143,11 @@ def get_month_expense(user):
 
         if date_text.startswith(month):
             try:
-                total += float(row.get("salary", 0))
+                total += float(row.get("Amount", 0))
             except:
                 pass
 
     return total
-
 
 def get_balance_report(user):
     salary = get_salary(user)
