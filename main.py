@@ -82,7 +82,7 @@ async def whatsapp(request: Request):
                 "⚠️ Please reply:\n"
                 "yes = save\n"
                 "no = cancel\n"
-                "correct 500 Food = update and save"
+                "update <amount> <Category> = update and save"
             )
             return Response(str(resp), media_type="application/xml")
 
