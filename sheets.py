@@ -92,23 +92,27 @@ def get_salary_cycle():
         cycle_month = today.strftime("%Y-%m")
         cycle_start = current_salary_day
 
+        # next salary
         if month == 12:
             next_salary_day = last_working_day(year + 1, 1)
         else:
             next_salary_day = last_working_day(year, month + 1)
 
+        cycle_end = next_salary_day - timedelta(days=1)
+
     else:
+        # BEFORE salary → still in CURRENT month cycle
+        cycle_month = today.strftime("%Y-%m")
+
+        # previous salary date
         if month == 1:
-            cycle_month = f"{year - 1}-12"
-            cycle_start = last_working_day(year - 1, 12)
+            prev_salary_day = last_working_day(year - 1, 12)
         else:
-            cycle_month = f"{year}-{month - 1:02d}"
-            cycle_start = last_working_day(year, month - 1)
+            prev_salary_day = last_working_day(year, month - 1)
 
+        cycle_start = prev_salary_day
         cycle_end = current_salary_day - timedelta(days=1)
-        return cycle_month, cycle_start, cycle_end
 
-    cycle_end = next_salary_day - timedelta(days=1)
     return cycle_month, cycle_start, cycle_end
 
 # =========================
