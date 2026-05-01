@@ -49,6 +49,7 @@ async def whatsapp(request: Request):
     form = await request.form()
 
     user = form.get("From", "")
+    auto_archive_if_needed(user)
     body = form.get("Body", "").strip()
     media_url = form.get("MediaUrl0")
 

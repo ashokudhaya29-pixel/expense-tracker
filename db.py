@@ -538,3 +538,28 @@ def compare_months(user):
         message += "No previous month records found."
 
     return message
+def auto_archive_if_needed(user):
+    user = clean_user(user)
+
+    current_cycle = current_month_ist()
+
+    res = supabase.table("user_meta").select("*").eq("user_phone", user).execute()
+
+    if res.data:
+        last_cycle = res.data[0].get("last_cycle")
+
+        if last_cycle != current_cycle:
+            print("🔄 New cycle detected → Archiving")
+
+            archive_previous_month(user)
+
+            supabase.table("user_meta").update({
+                "last_cycle": current_cycle
+            }).eq("user_phone", user).execute()
+
+    else:
+        # first time user
+        supabase.table("user_meta").insert({
+            "user_phone": user,
+            "last_cycle": current_cycle
+        }).execute()
