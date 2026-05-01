@@ -3,6 +3,8 @@ import json
 import gspread
 from datetime import datetime, timezone, timedelta
 from google.oauth2.service_account import Credentials
+import calendar
+from datetime import datetime, timezone, timedelta
 
 
 def get_client():
@@ -24,8 +26,8 @@ def clean_user(user):
 
 
 def current_month_ist():
-    ist = timezone(timedelta(hours=5, minutes=30))
-    return datetime.now(ist).strftime("%Y-%m")
+    cycle_month, _, _ = get_salary_cycle()
+    return cycle_month
 
 
 def current_date_ist():
@@ -61,6 +63,53 @@ def save_learning(user, keyword, category):
     user = clean_user(user)
     sheet.append_row([user, keyword.lower(), category.capitalize()])
 
+
+def last_working_day(year, month):
+    last_day = calendar.monthrange(year, month)[1]
+    dt = datetime(year, month, last_day)
+
+    # If Sunday, move to Friday
+    if dt.weekday() == 6:
+        dt = dt - timedelta(days=2)
+
+    # If Saturday, move to Friday
+    elif dt.weekday() == 5:
+        dt = dt - timedelta(days=1)
+
+    return dt.date()
+
+
+def get_salary_cycle():
+    ist = timezone(timedelta(hours=5, minutes=30))
+    today = datetime.now(ist).date()
+
+    year = today.year
+    month = today.month
+
+    current_salary_day = last_working_day(year, month)
+
+    if today >= current_salary_day:
+        cycle_month = today.strftime("%Y-%m")
+        cycle_start = current_salary_day
+
+        if month == 12:
+            next_salary_day = last_working_day(year + 1, 1)
+        else:
+            next_salary_day = last_working_day(year, month + 1)
+
+    else:
+        if month == 1:
+            cycle_month = f"{year - 1}-12"
+            cycle_start = last_working_day(year - 1, 12)
+        else:
+            cycle_month = f"{year}-{month - 1:02d}"
+            cycle_start = last_working_day(year, month - 1)
+
+        cycle_end = current_salary_day - timedelta(days=1)
+        return cycle_month, cycle_start, cycle_end
+
+    cycle_end = next_salary_day - timedelta(days=1)
+    return cycle_month, cycle_start, cycle_end
 
 # =========================
 # Salary / Budget
@@ -128,9 +177,9 @@ def get_month_expense(user):
     sheet = gc.open("Expense Tracker").sheet1
 
     user = clean_user(user)
-    month = current_month_ist()
-    data = sheet.get_all_records()
+    cycle_month, cycle_start, cycle_end = get_salary_cycle()
 
+    data = sheet.get_all_records()
     total = 0
 
     for row in data:
@@ -139,9 +188,14 @@ def get_month_expense(user):
         if row_user != user:
             continue
 
-        date_text = str(row.get("Date", ""))
+        date_text = str(row.get("Date", "")).split()[0]
 
-        if date_text.startswith(month):
+        try:
+            expense_date = datetime.strptime(date_text, "%Y-%m-%d").date()
+        except:
+            continue
+
+        if cycle_start <= expense_date <= cycle_end:
             try:
                 total += float(row.get("Amount", 0))
             except:
