@@ -79,32 +79,36 @@ async def whatsapp(request: Request):
             resp.message("❌ Expense cancelled.")
             return Response(str(resp), media_type="application/xml")
 
-        elif msg.startswith("correct"):
+        elif msg.startswith("correct") or msg.startswith("update"):
+            print("CORRECTION BLOCK HIT")
+            print("BODY:", body)
+
+            numbers = re.findall(r"\d+", body)
+
+            if not numbers:
+                resp.message("⚠️ Amount missing. Use: correct 300 Food")
+                return Response(str(resp), media_type="application/xml")
+
+            new_amount = float(numbers[0])
+
+            valid_categories = [
+                "food", "grocery", "travel", "shopping",
+                "medical", "bills", "emi", "entertainment", "other"
+            ]
+
+            new_category = None
+            body_lower = body.lower()
+
+            for cat in valid_categories:
+                if cat in body_lower:
+                    new_category = cat.capitalize()
+                    break
+
+            if not new_category:
+                resp.message("⚠️ Category missing. Use: correct 300 Food")
+                return Response(str(resp), media_type="application/xml")
+
             try:
-                print("CORRECT BODY:", body)
-
-                numbers = re.findall(r"\d+", body)
-                if not numbers:
-                    raise Exception("Amount not found")
-
-                new_amount = float(numbers[0])
-
-                valid_categories = [
-                    "food", "grocery", "travel", "shopping",
-                    "medical", "bills", "emi", "entertainment", "other"
-                ]
-
-                new_category = None
-                body_lower = body.lower()
-
-                for cat in valid_categories:
-                    if cat in body_lower:
-                        new_category = cat.capitalize()
-                        break
-
-                if not new_category:
-                    raise Exception("Category not found")
-
                 save_to_sheet(new_amount, new_category, user)
                 del pending_expenses[user]
 
@@ -116,8 +120,8 @@ async def whatsapp(request: Request):
                 return Response(str(resp), media_type="application/xml")
 
             except Exception as e:
-                print("❌ Correction error:", str(e))
-                resp.message("⚠️ Use: correct 300 Food")
+                print("❌ DB SAVE ERROR:", str(e))
+                resp.message(f"❌ Save error: {str(e)}")
                 return Response(str(resp), media_type="application/xml")
             
         else:
