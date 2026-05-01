@@ -8,3 +8,4 @@ oauth2client
 twilio
 python-dotenv
 python-multipart
+supabase

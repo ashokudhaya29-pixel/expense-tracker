@@ -4,7 +4,7 @@ from twilio.twiml.messaging_response import MessagingResponse
 from utils import download_audio
 from speech import speech_to_text
 from llm import extract_expense
-from sheets import *
+from db import *
 import os
 
 port = int(os.environ.get("PORT", 10000))
