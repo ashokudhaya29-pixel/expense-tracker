@@ -413,3 +413,123 @@ def update_entry_by_serial(user, serial, field, new_value):
         return f"✅ Updated entry #{serial} category to {new_value.capitalize()}"
 
     return "⚠️ Use: edit <number> salary <value> OR edit <number> category <value>"
+
+def archive_previous_month(user):
+    gc = get_client()
+    expense_sheet = gc.open("Expense Tracker").sheet1
+    archive_sheet = gc.open("Expense Tracker").worksheet("Previous_Month_Records")
+
+    user = clean_user(user)
+    cycle_month, cycle_start, cycle_end = get_salary_cycle()
+
+    data = expense_sheet.get_all_values()
+    rows_to_delete = []
+    moved_count = 0
+
+    for i in range(1, len(data)):
+        row = data[i]
+
+        if len(row) < 4:
+            continue
+
+        date_text = str(row[0]).split()[0]
+        row_user = clean_user(row[1])
+
+        if row_user != user:
+            continue
+
+        try:
+            expense_date = datetime.strptime(date_text, "%Y-%m-%d").date()
+        except:
+            continue
+
+        # archive only records before current salary cycle
+        if expense_date < cycle_start:
+            archive_sheet.append_row([
+                row[0],
+                row[1],
+                row[2],
+                row[3],
+                date_text[:7]
+            ])
+
+            rows_to_delete.append(i + 1)
+            moved_count += 1
+
+    for row_number in reversed(rows_to_delete):
+        expense_sheet.delete_rows(row_number)
+
+    return f"✅ Archived {moved_count} old expense records."
+
+def compare_months(user):
+    gc = get_client()
+    expense_sheet = gc.open("Expense Tracker").sheet1
+    archive_sheet = gc.open("Expense Tracker").worksheet("Previous_Month_Records")
+
+    user = clean_user(user)
+    cycle_month, cycle_start, cycle_end = get_salary_cycle()
+
+    # current cycle total
+    current_total = 0
+    current_data = expense_sheet.get_all_records()
+
+    for row in current_data:
+        row_user = clean_user(row.get("User", ""))
+
+        if row_user != user:
+            continue
+
+        date_text = str(row.get("Date", "")).split()[0]
+
+        try:
+            expense_date = datetime.strptime(date_text, "%Y-%m-%d").date()
+        except:
+            continue
+
+        if cycle_start <= expense_date <= cycle_end:
+            current_total += float(row.get("Amount", 0))
+
+    # previous archived month total
+    archive_data = archive_sheet.get_all_records()
+
+    previous_month = None
+    previous_total = 0
+
+    for row in archive_data:
+        row_user = clean_user(row.get("User", ""))
+
+        if row_user != user:
+            continue
+
+        row_cycle = str(row.get("CycleMonth", "")).strip()
+
+        if not previous_month or row_cycle > previous_month:
+            previous_month = row_cycle
+
+    if previous_month:
+        for row in archive_data:
+            row_user = clean_user(row.get("User", ""))
+            row_cycle = str(row.get("CycleMonth", "")).strip()
+
+            if row_user == user and row_cycle == previous_month:
+                previous_total += float(row.get("Amount", 0))
+
+    difference = current_total - previous_total
+
+    message = "📊 Month Comparison\n\n"
+    message += f"Current Cycle Spending: ₹{int(current_total)}\n"
+
+    if previous_month:
+        message += f"Previous Month ({previous_month}): ₹{int(previous_total)}\n"
+        message += f"Difference: ₹{int(difference)}\n\n"
+
+        if difference > 0:
+            message += "⚠️ You spent more than previous month."
+        elif difference < 0:
+            message += "✅ You spent less than previous month."
+        else:
+            message += "➖ Spending is same as previous month."
+    else:
+        message += "No previous month records found."
+
+    return message
