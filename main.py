@@ -6,6 +6,7 @@ from speech import speech_to_text
 from llm import extract_expense
 from db import *
 import os
+import re
 
 port = int(os.environ.get("PORT", 10000))
 
@@ -80,20 +81,29 @@ async def whatsapp(request: Request):
 
         elif msg.startswith("correct"):
             try:
-                parts = body.lower().replace("=", "").split()
+                print("CORRECT BODY:", body)
 
-                # find first number
-                new_amount = None
-                for p in parts:
-                    if p.isdigit():
-                        new_amount = float(p)
+                numbers = re.findall(r"\d+", body)
+                if not numbers:
+                    raise Exception("Amount not found")
+
+                new_amount = float(numbers[0])
+
+                valid_categories = [
+                    "food", "grocery", "travel", "shopping",
+                    "medical", "bills", "emi", "entertainment", "other"
+                ]
+
+                new_category = None
+                body_lower = body.lower()
+
+                for cat in valid_categories:
+                    if cat in body_lower:
+                        new_category = cat.capitalize()
                         break
 
-                # find category (last word usually)
-                new_category = parts[-1].capitalize()
-
-                if not new_amount:
-                    raise Exception("Amount not found")
+                if not new_category:
+                    raise Exception("Category not found")
 
                 save_to_sheet(new_amount, new_category, user)
                 del pending_expenses[user]
@@ -107,8 +117,9 @@ async def whatsapp(request: Request):
 
             except Exception as e:
                 print("❌ Correction error:", str(e))
-                resp.message("⚠️ Use: correct 500 Food")
+                resp.message("⚠️ Use: correct 300 Food")
                 return Response(str(resp), media_type="application/xml")
+            
         else:
             resp.message(
                 "⚠️ Please reply:\n"
