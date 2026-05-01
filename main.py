@@ -14,6 +14,29 @@ app = FastAPI()
 # Temporary memory for confirmation before saving
 pending_expenses = {}
 
+def detect_category(text, user):
+    text = text.lower()
+
+    learned = get_learned_categories(user)
+    for keyword, cat in learned.items():
+        if keyword in text:
+            return cat
+
+    categories = {
+        "Food": ["hotel", "food", "restaurant", "biryani", "tea", "coffee", "zomato", "swiggy"],
+        "Grocery": ["zepto", "blinkit", "bigbasket", "grocery", "milk", "rice"],
+        "Travel": ["uber", "ola", "bus", "petrol", "auto"],
+        "Shopping": ["amazon", "flipkart", "myntra"],
+        "Medical": ["hospital", "medicine", "tablet"],
+        "Bills": ["eb", "electricity", "wifi", "rent", "recharge"]
+    }
+
+    for cat, words in categories.items():
+        for w in words:
+            if w in text:
+                return cat
+
+    return "Other"        
 
 @app.get("/")
 def home():
@@ -57,10 +80,20 @@ async def whatsapp(request: Request):
 
         elif msg.startswith("correct"):
             try:
-                parts = body.split()
+                parts = body.lower().replace("=", "").split()
 
-                new_amount = float(parts[1])
-                new_category = parts[2].capitalize()
+                # find first number
+                new_amount = None
+                for p in parts:
+                    if p.isdigit():
+                        new_amount = float(p)
+                        break
+
+                # find category (last word usually)
+                new_category = parts[-1].capitalize()
+
+                if not new_amount:
+                    raise Exception("Amount not found")
 
                 save_to_sheet(new_amount, new_category, user)
                 del pending_expenses[user]
@@ -74,9 +107,8 @@ async def whatsapp(request: Request):
 
             except Exception as e:
                 print("❌ Correction error:", str(e))
-                resp.message("⚠️ Use format: correct 500 Food")
+                resp.message("⚠️ Use: correct 500 Food")
                 return Response(str(resp), media_type="application/xml")
-
         else:
             resp.message(
                 "⚠️ Please reply:\n"
@@ -119,6 +151,13 @@ async def whatsapp(request: Request):
                 return Response(str(resp), media_type="application/xml")
 
             amount, category = extract_expense(text, user)
+            if amount == 0:
+                for word in text.replace(".", "").split():
+                    if word.isdigit():
+                        amount = float(word)
+                        break
+
+            category = detect_category(text, user)
 
             pending_expenses[user] = {
                 "amount": amount,
