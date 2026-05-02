@@ -33,7 +33,7 @@ def set_category_budget(user, category, amount):
     user = clean_user(user)
     month = current_month_ist()
     category = category.capitalize()
-    
+
     supabase.table("category_budgets") \
         .delete() \
         .eq("user_phone", user) \
@@ -356,6 +356,49 @@ def get_monthly_summary(user):
     if total == 0:
         response += "No expenses recorded yet."
 
+        # =========================
+    # AI INSIGHTS
+    # =========================
+    response += "\n💡 AI Insights:\n"
+
+    if total == 0:
+        response += "No expenses yet."
+        return response
+
+    # highest category
+    top_category = max(category_totals, key=category_totals.get)
+    top_amount = category_totals[top_category]
+    top_percent = (top_amount / total) * 100
+
+    response += f"• Highest spend: {top_category} ({int(top_percent)}%)\n"
+
+    # budget warning
+    budget_res = supabase.table("category_budgets") \
+        .select("*") \
+        .eq("user_phone", user) \
+        .eq("month", cycle_month) \
+        .execute()
+
+    for b in budget_res.data:
+        cat = b["category"]
+        limit_amt = float(b["limit_amount"])
+
+        if cat in category_totals:
+            spent_amt = category_totals[cat]
+            percent = (spent_amt / limit_amt) * 100 if limit_amt > 0 else 0
+
+            if percent >= 80:
+                response += f"• ⚠️ {cat} budget almost used ({int(percent)}%)\n"
+
+    # suggestion logic
+    if top_category == "Food":
+        response += "• Suggestion: Reduce hotel/Swiggy expenses by ₹500/week\n"
+    elif top_category == "Shopping":
+        response += "• Suggestion: Avoid unnecessary online purchases\n"
+    elif top_category == "Travel":
+        response += "• Suggestion: Try cost-effective transport options\n"
+    else:
+        response += "• Keep tracking your expenses consistently 👍\n"
     return response
 
 
