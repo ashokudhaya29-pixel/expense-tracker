@@ -712,3 +712,41 @@ def auto_archive_if_needed(user):
             "user_phone": user,
             "last_cycle": current_cycle
         }).execute()
+
+# =========================
+# PENDING EXPENSE (DB)
+# =========================
+def save_pending_expense(user, amount, category, raw_text=None):
+    user = clean_user(user)
+
+    supabase.table("pending_expenses") \
+        .delete() \
+        .eq("user_phone", user) \
+        .execute()
+
+    supabase.table("pending_expenses").insert({
+        "user_phone": user,
+        "amount": amount,
+        "category": category,
+        "raw_text": raw_text
+    }).execute()
+
+
+def get_pending_expense(user):
+    user = clean_user(user)
+
+    res = supabase.table("pending_expenses") \
+        .select("*") \
+        .eq("user_phone", user) \
+        .execute()
+
+    return res.data[0] if res.data else None
+
+
+def delete_pending_expense(user):
+    user = clean_user(user)
+
+    supabase.table("pending_expenses") \
+        .delete() \
+        .eq("user_phone", user) \
+        .execute()

@@ -12,8 +12,7 @@ port = int(os.environ.get("PORT", 10000))
 
 app = FastAPI()
 
-# Temporary memory for confirmation before saving
-pending_expenses = {}
+
 
 def detect_category(text, user):
     text = text.lower()
@@ -64,14 +63,15 @@ async def whatsapp(request: Request):
     # =========================
     # ✅ CONFIRMATION FLOW
     # =========================
-    if user in pending_expenses:
-        pending = pending_expenses[user]
+    pending = get_pending_expense(user)
 
+    if pending:
+        
         if msg == "yes":
             save_to_sheet(pending["amount"], pending["category"], user)
 
             alert = check_category_budget(user, pending["category"])
-            del pending_expenses[user]
+            delete_pending_expense(user)
             if alert:
                 resp.message(f"✅ Saved\n\n{alert}")
             else:
@@ -79,7 +79,7 @@ async def whatsapp(request: Request):
             return Response(str(resp), media_type="application/xml")
 
         elif msg == "no":
-            del pending_expenses[user]
+            delete_pending_expense(user)
 
             resp.message("❌ Expense cancelled.")
             return Response(str(resp), media_type="application/xml")
@@ -126,7 +126,7 @@ async def whatsapp(request: Request):
                     message += f"\n\n{alert}"
 
                    
-                del pending_expenses[user]
+                delete_pending_expense(user)
 
                 resp.message(message)
                 return Response(str(resp), media_type="application/xml")
@@ -186,11 +186,8 @@ async def whatsapp(request: Request):
 
             category = detect_category(text, user)
 
-            pending_expenses[user] = {
-                "amount": amount,
-                "category": category
-            }
-
+            save_pending_expense(user, amount, category, text)
+                
             resp.message(
                 f"📝 Please confirm:\n\n"
                 f"Amount: ₹{amount}\n"
