@@ -754,7 +754,7 @@ def delete_pending_expense(user):
     
 def detect_spending_anomaly(user):
     user = clean_user(user)
-    print("📊 DAILY TOTALS:", daily_totals)
+    
     print("📊 TODAY SPENT:", today_spent)
     print("📊 PAST DAYS:", past_days)
     print("📊 AVG:", avg if past_days else 0)
@@ -778,6 +778,7 @@ def detect_spending_anomaly(user):
             continue
 
         daily_totals[d] = daily_totals.get(d, 0) + float(row.get("amount", 0))
+        print("📊 DAILY TOTALS:", daily_totals)
 
     if not daily_totals:
         return None
