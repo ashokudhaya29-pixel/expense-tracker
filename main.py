@@ -365,11 +365,17 @@ async def whatsapp(request: Request):
                 "edit 1 category Grocery"
             )
             return Response(str(resp), media_type="application/xml")
-    if msg == "archive":
-        result = archive_previous_month(user)
+    if msg.startswith("archive"):
+        parts = msg.split()
+
+        if len(parts) == 2:
+            result = archive_by_month(user, parts[1])
+        else:
+            result = archive_previous_month(user)
+
         resp.message(result)
         return Response(str(resp), media_type="application/xml")
-    
+        
     if msg == "compare":
         result = compare_months(user)
         resp.message(result)
