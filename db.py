@@ -750,3 +750,59 @@ def delete_pending_expense(user):
         .delete() \
         .eq("user_phone", user) \
         .execute()
+    
+def detect_spending_anomaly(user):
+    user = clean_user(user)
+
+    res = supabase.table("expenses") \
+        .select("*") \
+        .eq("user_phone", user) \
+        .eq("is_archived", False) \
+        .execute()
+
+    from datetime import datetime, timedelta
+
+    today = datetime.now().date()
+
+    daily_totals = {}
+
+    for row in res.data:
+        date_text = str(row.get("expense_date", "")).split()[0]
+
+        try:
+            d = datetime.strptime(date_text, "%Y-%m-%d").date()
+        except:
+            continue
+
+        daily_totals[d] = daily_totals.get(d, 0) + float(row.get("amount", 0))
+
+    if not daily_totals:
+        return None
+
+    today_spent = daily_totals.get(today, 0)
+
+    # average of last 7 days (excluding today)
+    past_days = [
+        amt for d, amt in daily_totals.items()
+        if d != today and (today - d).days <= 7
+    ]
+
+    if not past_days:
+        return None
+
+    avg = sum(past_days) / len(past_days)
+
+    if avg == 0:
+        return None
+
+    ratio = today_spent / avg
+
+    if ratio >= 2:
+        return (
+            f"⚠️ High spending detected today!\n\n"
+            f"Today: ₹{int(today_spent)}\n"
+            f"Average: ₹{int(avg)}\n"
+            f"🚨 {int(ratio)}x higher than usual"
+        )
+
+    return None     

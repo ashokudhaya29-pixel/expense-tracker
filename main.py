@@ -71,11 +71,14 @@ async def whatsapp(request: Request):
             save_to_sheet(pending["amount"], pending["category"], user)
 
             alert = check_category_budget(user, pending["category"])
+            anomaly = detect_spending_anomaly(user)
             delete_pending_expense(user)
+            message = "✅ Expense saved successfully."
             if alert:
-                resp.message(f"✅ Saved\n\n{alert}")
-            else:
-                resp.message("✅ Expense saved successfully.")
+                message += f"\n\n{alert}"
+            if anomaly:
+                message += f"\n\n{anomaly}"    
+            resp.message(message)
             return Response(str(resp), media_type="application/xml")
 
         elif msg == "no":
@@ -87,6 +90,8 @@ async def whatsapp(request: Request):
         elif msg.startswith("correct") or msg.startswith("update"):
             print("CORRECTION BLOCK HIT")
             print("BODY:", body)
+
+            anomaly = detect_spending_anomaly(user)
 
             numbers = re.findall(r"\d+", body)
 
