@@ -51,17 +51,22 @@ def get_salary_cycle():
         cycle_end = next_salary_day - timedelta(days=1)
 
     else:
-        if month == 1:
-            cycle_month = f"{year - 1}-12"
-            cycle_start = last_working_day(year - 1, 12)
-        else:
-            cycle_month = f"{year}-{month - 1:02d}"
-            cycle_start = last_working_day(year, month - 1)
+        cycle_month = today.strftime("%Y-%m")
 
+        if month == 1:
+            prev_salary_day = last_working_day(year - 1, 12)
+        else:
+            prev_salary_day = last_working_day(year, month - 1)
+
+        cycle_start = prev_salary_day
         cycle_end = current_salary_day - timedelta(days=1)
 
-    return cycle_month, cycle_start, cycle_end
+    print("📅 TODAY:", today)
+    print("📅 CYCLE MONTH:", cycle_month)
+    print("📅 CYCLE START:", cycle_start)
+    print("📅 CYCLE END:", cycle_end)
 
+    return cycle_month, cycle_start, cycle_end
 
 def current_month_ist():
     cycle_month, _, _ = get_salary_cycle()
@@ -222,6 +227,9 @@ def get_balance_report(user):
 def save_to_sheet(amount, category, user, raw_text=None):
     user = clean_user(user)
     cycle_month = current_month_ist()
+    print("✅ SAVING EXPENSE")
+    print("DATE:", current_date_ist())
+    print("CYCLE MONTH:", cycle_month)
 
     supabase.table("expenses").insert({
         "user_phone": user,
