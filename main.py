@@ -69,6 +69,13 @@ async def whatsapp(request: Request):
 
         if msg == "yes":
             save_to_sheet(pending["amount"], pending["category"], user)
+
+            alert = check_category_budget(user, pending["category"])
+
+            if alert:
+                resp.message(f"✅ Saved\n\n{alert}")
+            else:
+                resp.message("✅ Expense saved successfully.")
             del pending_expenses[user]
 
             resp.message("✅ Expense saved successfully.")
@@ -210,6 +217,19 @@ async def whatsapp(request: Request):
             resp.message(result)
         else:
             resp.message("Usage: salary 50000")
+
+        return Response(str(resp), media_type="application/xml")
+    if msg.startswith("set budget"):
+        parts = msg.split()
+
+        if len(parts) >= 4:
+            category = parts[2].capitalize()
+            amount = float(parts[3])
+
+            result = set_category_budget(user, category, amount)
+            resp.message(result)
+        else:
+            resp.message("Usage: set budget Food 10000")
 
         return Response(str(resp), media_type="application/xml")
 

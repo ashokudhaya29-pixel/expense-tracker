@@ -29,6 +29,61 @@ def last_working_day(year, month):
 
     return dt.date()
 
+def set_category_budget(user, category, amount):
+    user = clean_user(user)
+    month = current_month_ist()
+
+    supabase.table("category_budgets") \
+        .delete() \
+        .eq("user_phone", user) \
+        .eq("month", month) \
+        .eq("category", category) \
+        .execute()
+
+    supabase.table("category_budgets").insert({
+        "user_phone": user,
+        "month": month,
+        "category": category,
+        "limit_amount": amount
+    }).execute()
+
+    return f"✅ Budget set: {category} ₹{amount}"
+
+def check_category_budget(user, category):
+    user = clean_user(user)
+    month = current_month_ist()
+
+    budget_res = supabase.table("category_budgets") \
+        .select("*") \
+        .eq("user_phone", user) \
+        .eq("month", month) \
+        .eq("category", category) \
+        .execute()
+
+    if not budget_res.data:
+        return None
+
+    limit_amount = float(budget_res.data[0]["limit_amount"])
+
+    expense_res = supabase.table("expenses") \
+        .select("*") \
+        .eq("user_phone", user) \
+        .eq("cycle_month", month) \
+        .eq("category", category) \
+        .eq("is_archived", False) \
+        .execute()
+
+    spent = sum(float(r["amount"]) for r in expense_res.data)
+
+    percent = (spent / limit_amount) * 100 if limit_amount > 0 else 0
+
+    if percent >= 100:
+        return f"🚨 {category} budget exceeded! ₹{int(spent)} / ₹{int(limit_amount)}"
+
+    elif percent >= 80:
+        return f"⚠️ {category} budget {int(percent)}% used (₹{int(spent)} / ₹{int(limit_amount)})"
+
+    return None
 
 def get_salary_cycle():
     ist = timezone(timedelta(hours=5, minutes=30))
