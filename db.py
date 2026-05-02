@@ -590,26 +590,20 @@ def archive_by_month(user, month):
 
     return f"✅ Archived {moved_count} records for {month}."
 
-
 def compare_months(user):
     user = clean_user(user)
-    cycle_month = current_month_ist()
+    current_cycle = current_month_ist()
 
     current_res = (
         supabase.table("expenses")
         .select("*")
         .eq("user_phone", user)
-        .eq("cycle_month", cycle_month)
+        .eq("cycle_month", current_cycle)
         .eq("is_archived", False)
         .execute()
     )
 
-    current_total = 0
-
-    for row in current_res.data:
-        current_total += float(row.get("amount", 0))
-
-    archive_res = (
+    archived_res = (
         supabase.table("expenses")
         .select("*")
         .eq("user_phone", user)
@@ -617,40 +611,82 @@ def compare_months(user):
         .execute()
     )
 
+    current_total = 0
+    current_categories = {}
+
+    for row in current_res.data:
+        amount = float(row.get("amount", 0))
+        category = row.get("category", "Other")
+
+        current_total += amount
+        current_categories[category] = current_categories.get(category, 0) + amount
+
     previous_month = None
 
-    for row in archive_res.data:
+    for row in archived_res.data:
         row_cycle = str(row.get("cycle_month", "")).strip()
 
         if row_cycle and (not previous_month or row_cycle > previous_month):
             previous_month = row_cycle
 
     previous_total = 0
+    previous_categories = {}
 
     if previous_month:
-        for row in archive_res.data:
+        for row in archived_res.data:
             if str(row.get("cycle_month", "")).strip() == previous_month:
-                previous_total += float(row.get("amount", 0))
+                amount = float(row.get("amount", 0))
+                category = row.get("category", "Other")
+
+                previous_total += amount
+                previous_categories[category] = previous_categories.get(category, 0) + amount
 
     difference = current_total - previous_total
 
     message = "📊 Month Comparison\n\n"
-    message += f"Current Cycle ({cycle_month}): ₹{int(current_total)}\n"
+    message += f"Current Cycle ({current_cycle}): ₹{int(current_total)}\n"
 
-    if previous_month:
-        message += f"Previous Month ({previous_month}): ₹{int(previous_total)}\n"
-        message += f"Difference: ₹{int(difference)}\n\n"
-
-        if difference > 0:
-            message += "⚠️ You spent more than previous month."
-        elif difference < 0:
-            message += "✅ You spent less than previous month."
-        else:
-            message += "➖ Spending is same as previous month."
-    else:
+    if not previous_month:
         message += "No previous month records found."
+        return message
+
+    message += f"Previous Month ({previous_month}): ₹{int(previous_total)}\n"
+    message += f"Difference: ₹{int(difference)}\n\n"
+
+    if difference > 0:
+        message += "⚠️ Overall spending increased.\n"
+    elif difference < 0:
+        message += "✅ Overall spending reduced.\n"
+    else:
+        message += "➖ Overall spending is same.\n"
+
+    message += "\n📌 Category Changes:\n"
+
+    all_categories = set(current_categories.keys()) | set(previous_categories.keys())
+
+    for cat in all_categories:
+        current_amt = current_categories.get(cat, 0)
+        previous_amt = previous_categories.get(cat, 0)
+        diff = current_amt - previous_amt
+
+        if diff > 0:
+            message += f"• {cat}: increased by ₹{int(diff)}\n"
+        elif diff < 0:
+            message += f"• {cat}: reduced by ₹{abs(int(diff))}\n"
+        else:
+            message += f"• {cat}: no change\n"
+
+    message += "\n💡 Advice:\n"
+
+    if difference > 0:
+        message += "Try reducing the category with highest increase this month."
+    elif difference < 0:
+        message += "Good progress. Continue the same spending control."
+    else:
+        message += "Your spending pattern is stable."
 
     return message
+
 def auto_archive_if_needed(user):
     user = clean_user(user)
 
