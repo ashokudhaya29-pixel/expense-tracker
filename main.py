@@ -71,14 +71,11 @@ async def whatsapp(request: Request):
             save_to_sheet(pending["amount"], pending["category"], user)
 
             alert = check_category_budget(user, pending["category"])
-
+            del pending_expenses[user]
             if alert:
                 resp.message(f"✅ Saved\n\n{alert}")
             else:
                 resp.message("✅ Expense saved successfully.")
-            del pending_expenses[user]
-
-            resp.message("✅ Expense saved successfully.")
             return Response(str(resp), media_type="application/xml")
 
         elif msg == "no":
@@ -118,13 +115,20 @@ async def whatsapp(request: Request):
 
             try:
                 save_to_sheet(new_amount, new_category, user)
-                del pending_expenses[user]
-
-                resp.message(
+                alert = check_category_budget(user, new_category)
+                message = (
                     f"✅ Corrected and saved:\n\n"
                     f"Amount: ₹{int(new_amount)}\n"
                     f"Category: {new_category}"
                 )
+
+                if alert:
+                    message += f"\n\n{alert}"
+
+                   
+                del pending_expenses[user]
+
+                resp.message(message)
                 return Response(str(resp), media_type="application/xml")
 
             except Exception as e:
