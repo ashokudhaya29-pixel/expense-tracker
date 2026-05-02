@@ -2,6 +2,7 @@ import os
 import calendar
 from datetime import datetime, timezone, timedelta
 from supabase import create_client
+from datetime import timezone, timedelta
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -753,6 +754,10 @@ def delete_pending_expense(user):
     
 def detect_spending_anomaly(user):
     user = clean_user(user)
+    print("📊 DAILY TOTALS:", daily_totals)
+    print("📊 TODAY SPENT:", today_spent)
+    print("📊 PAST DAYS:", past_days)
+    print("📊 AVG:", avg if past_days else 0)
 
     res = supabase.table("expenses") \
         .select("*") \
@@ -760,10 +765,8 @@ def detect_spending_anomaly(user):
         .eq("is_archived", False) \
         .execute()
 
-    from datetime import datetime, timedelta
-
-    today = datetime.now().date()
-
+    ist = timezone(timedelta(hours=5, minutes=30))
+    today = datetime.now(ist).date()
     daily_totals = {}
 
     for row in res.data:
@@ -781,6 +784,11 @@ def detect_spending_anomaly(user):
 
     today_spent = daily_totals.get(today, 0)
 
+    if today_spent > 1000:
+        return (
+        f"⚠️ High spending detected!\n\n"
+        f"Today: ₹{int(today_spent)}"
+    )
     # average of last 7 days (excluding today)
     past_days = [
         amt for d, amt in daily_totals.items()
@@ -792,17 +800,19 @@ def detect_spending_anomaly(user):
 
     avg = sum(past_days) / len(past_days)
 
-    if avg == 0:
+    
+    '''if avg == 0:
         return None
 
     ratio = today_spent / avg
+    print("📊 RATIO:", ratio)
 
-    if ratio >= 2:
+    if ratio >= 1.5:
         return (
             f"⚠️ High spending detected today!\n\n"
             f"Today: ₹{int(today_spent)}\n"
             f"Average: ₹{int(avg)}\n"
             f"🚨 {int(ratio)}x higher than usual"
-        )
+        )'''
 
     return None     
