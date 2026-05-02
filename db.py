@@ -32,7 +32,8 @@ def last_working_day(year, month):
 def set_category_budget(user, category, amount):
     user = clean_user(user)
     month = current_month_ist()
-
+    category = category.capitalize()
+    
     supabase.table("category_budgets") \
         .delete() \
         .eq("user_phone", user) \
@@ -52,6 +53,10 @@ def set_category_budget(user, category, amount):
 def check_category_budget(user, category):
     user = clean_user(user)
     month = current_month_ist()
+    category = category.capitalize()
+    print("🔔 CHECK BUDGET USER:", user)    
+    print("🔔 CHECK BUDGET MONTH:", month)
+    print("🔔 CHECK BUDGET CATEGORY:", category)
 
     budget_res = supabase.table("category_budgets") \
         .select("*") \
@@ -59,6 +64,7 @@ def check_category_budget(user, category):
         .eq("month", month) \
         .eq("category", category) \
         .execute()
+    print("🔔 BUDGET DATA:", budget_res.data)
 
     if not budget_res.data:
         return None
@@ -72,6 +78,7 @@ def check_category_budget(user, category):
         .eq("category", category) \
         .eq("is_archived", False) \
         .execute()
+    print("🔔 EXPENSE DATA:", expense_res.data)
 
     spent = sum(float(r["amount"]) for r in expense_res.data)
 
