@@ -187,7 +187,7 @@ async def whatsapp(request: Request):
             category = detect_category(text, user)
 
             save_pending_expense(user, amount, category, text)
-                
+
             resp.message(
                 f"📝 Please confirm:\n\n"
                 f"Amount: ₹{amount}\n"
@@ -389,5 +389,38 @@ async def whatsapp(request: Request):
         "addsalary 5000"
     )
     return Response(str(resp), media_type="application/xml")
+
+@app.get("/send-daily-summary")
+def send_daily_summary():
+    users = supabase.table("expenses").select("user_phone").execute()
+
+    sent_users = set()
+
+    for row in users.data:
+        user = row["user_phone"]
+
+        if user in sent_users:
+            continue
+
+        summary = get_monthly_summary(user)
+
+        # send via Twilio
+        from twilio.rest import Client
+        import os
+
+        client = Client(
+            os.getenv("TWILIO_ACCOUNT_SID"),
+            os.getenv("TWILIO_AUTH_TOKEN")
+        )
+
+        client.messages.create(
+            body=f"📊 Daily Update:\n\n{summary}",
+            from_="whatsapp:+14155238886",
+            to=f"whatsapp:+{user}"
+        )
+
+        sent_users.add(user)
+
+    return {"status": "sent"}
 
     
