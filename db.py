@@ -754,7 +754,7 @@ def delete_pending_expense(user):
     
 def detect_spending_anomaly(user):
     user = clean_user(user)
-    
+    print("📊 DAILY TOTALS:", daily_totals)
     print("📊 TODAY SPENT:", today_spent)
     print("📊 PAST DAYS:", past_days)
     print("📊 AVG:", avg if past_days else 0)
@@ -778,18 +778,12 @@ def detect_spending_anomaly(user):
             continue
 
         daily_totals[d] = daily_totals.get(d, 0) + float(row.get("amount", 0))
-        print("📊 DAILY TOTALS:", daily_totals)
 
     if not daily_totals:
         return None
 
     today_spent = daily_totals.get(today, 0)
 
-    if today_spent > 1000:
-        return (
-        f"⚠️ High spending detected!\n\n"
-        f"Today: ₹{int(today_spent)}"
-    )
     # average of last 7 days (excluding today)
     past_days = [
         amt for d, amt in daily_totals.items()
@@ -801,7 +795,13 @@ def detect_spending_anomaly(user):
 
     avg = sum(past_days) / len(past_days)
 
-    
+    # TEMP TEST LOGIC
+    if today_spent > 1000:
+        return (
+        f"⚠️ High spending detected!\n\n"
+        f"Today: ₹{int(today_spent)}"
+    )
+
     '''if avg == 0:
         return None
 
