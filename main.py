@@ -266,6 +266,13 @@ async def whatsapp(request: Request):
         report = get_balance_report(user)
         resp.message(report)
         return Response(str(resp), media_type="application/xml")
+    
+    if msg == "insights":
+        summary = get_monthly_summary(user)
+        compare = compare_months(user)
+
+        resp.message(f"{summary}\n\n{compare}")
+        return Response(str(resp), media_type="application/xml")
 
     # =========================
     # 📊 SUMMARY COMMAND

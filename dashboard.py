@@ -63,6 +63,9 @@ if user_phone:
             names="category",
             title="Expense by Category"
         )
+        month_filter = st.selectbox("Select Month", expenses["cycle_month"].unique())
+
+        expenses = expenses[expenses["cycle_month"] == month_filter]
 
         st.plotly_chart(fig, use_container_width=True)
 
@@ -87,3 +90,15 @@ if user_phone:
             expenses[["expense_date", "amount", "category", "raw_text", "cycle_month"]],
             use_container_width=True
         )
+        st.subheader("📊 Budget Usage")
+
+        for _, row in budgets.iterrows():
+            cat = row["category"]
+            limit_amt = float(row["limit_amount"])
+
+            spent = category_df[category_df["category"] == cat]["amount"].sum()
+
+            percent = (spent / limit_amt) * 100 if limit_amt > 0 else 0
+
+            st.progress(min(percent/100, 1.0))
+            st.write(f"{cat}: ₹{int(spent)} / ₹{int(limit_amt)}")
