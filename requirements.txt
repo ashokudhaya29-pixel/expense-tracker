@@ -9,3 +9,6 @@ twilio
 python-dotenv
 python-multipart
 supabase
+streamlit
+pandas
+plotly

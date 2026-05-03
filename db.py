@@ -754,10 +754,6 @@ def delete_pending_expense(user):
     
 def detect_spending_anomaly(user):
     user = clean_user(user)
-    print("📊 DAILY TOTALS:", daily_totals)
-    print("📊 TODAY SPENT:", today_spent)
-    print("📊 PAST DAYS:", past_days)
-    print("📊 AVG:", avg if past_days else 0)
 
     res = supabase.table("expenses") \
         .select("*") \
@@ -778,32 +774,30 @@ def detect_spending_anomaly(user):
             continue
 
         daily_totals[d] = daily_totals.get(d, 0) + float(row.get("amount", 0))
+    print("📊 DAILY TOTALS:", daily_totals)
 
     if not daily_totals:
         return None
 
     today_spent = daily_totals.get(today, 0)
+    print("📊 TODAY SPENT:", today_spent)
 
     # average of last 7 days (excluding today)
     past_days = [
         amt for d, amt in daily_totals.items()
         if d != today and (today - d).days <= 7
     ]
+    print("📊 PAST DAYS:", past_days)
 
     if not past_days:
         return None
 
     avg = sum(past_days) / len(past_days)
+    print("📊 AVG:", avg if past_days else 0)
 
-    # TEMP TEST LOGIC
-    if today_spent > 1000:
-        return (
-        f"⚠️ High spending detected!\n\n"
-        f"Today: ₹{int(today_spent)}"
-    )
-
-    '''if avg == 0:
+    if avg == 0:
         return None
+        
 
     ratio = today_spent / avg
     print("📊 RATIO:", ratio)
@@ -814,6 +808,6 @@ def detect_spending_anomaly(user):
             f"Today: ₹{int(today_spent)}\n"
             f"Average: ₹{int(avg)}\n"
             f"🚨 {int(ratio)}x higher than usual"
-        )'''
+        )
 
     return None     
