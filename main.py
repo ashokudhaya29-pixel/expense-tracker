@@ -289,6 +289,12 @@ async def whatsapp(request: Request):
         report = get_weekly_report(user)
         resp.message(report)
         return Response(str(resp), media_type="application/xml")
+    
+    DASHBOARD_URL = os.getenv("DASHBOARD_URL")
+
+    if msg == "dashboard":
+        resp.message(f"📊 Open dashboard:\n{DASHBOARD_URL}")
+        return Response(str(resp), media_type="application/xml")
 
     # =========================
     # 🗑 DELETE COMMAND

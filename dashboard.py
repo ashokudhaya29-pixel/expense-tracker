@@ -7,98 +7,128 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 st.set_page_config(page_title="AI Expense Tracker", layout="wide")
-
 st.title("💰 AI Expense Tracker Dashboard")
 
-user_phone = st.text_input("Enter WhatsApp number", "919080774244")
+phones_env = os.getenv("MY_PHONES", "")
+allowed_phones = [p.strip() for p in phones_env.split(",") if p.strip()]
 
-if user_phone:
-    expenses_res = (
-        supabase.table("expenses")
-        .select("*")
-        .eq("user_phone", user_phone)
-        .eq("is_archived", False)
-        .execute()
-    )
+if not allowed_phones:
+    st.error("No users configured. Add MY_PHONES in .env or Streamlit secrets.")
+    st.stop()
 
-    budgets_res = (
-        supabase.table("budgets")
-        .select("*")
-        .eq("user_phone", user_phone)
-        .execute()
-    )
+user_phone = st.selectbox("Select User", allowed_phones)
 
-    expenses = pd.DataFrame(expenses_res.data)
-    budgets = pd.DataFrame(budgets_res.data)
+expenses_res = (
+    supabase.table("expenses")
+    .select("*")
+    .eq("user_phone", user_phone)
+    .eq("is_archived", False)
+    .execute()
+)
 
-    if expenses.empty:
-        st.warning("No expense records found.")
-    else:
-        expenses["amount"] = expenses["amount"].astype(float)
+salary_res = (
+    supabase.table("budgets")
+    .select("*")
+    .eq("user_phone", user_phone)
+    .execute()
+)
 
-        total_spent = expenses["amount"].sum()
-        total_salary = budgets["salary"].astype(float).sum() if not budgets.empty else 0
-        remaining = total_salary - total_spent
+category_budget_res = (
+    supabase.table("category_budgets")
+    .select("*")
+    .eq("user_phone", user_phone)
+    .execute()
+)
 
-        col1, col2, col3 = st.columns(3)
+expenses = pd.DataFrame(expenses_res.data)
+salary_data = pd.DataFrame(salary_res.data)
+category_budgets = pd.DataFrame(category_budget_res.data)
 
-        col1.metric("Salary", f"₹{int(total_salary)}")
-        col2.metric("Spent", f"₹{int(total_spent)}")
-        col3.metric("Remaining", f"₹{int(remaining)}")
+if expenses.empty:
+    st.warning("No expense records found.")
+    st.stop()
 
-        st.subheader("📊 Category Spending")
+expenses["amount"] = expenses["amount"].astype(float)
+expenses["expense_date"] = pd.to_datetime(expenses["expense_date"])
 
-        category_df = expenses.groupby("category", as_index=False)["amount"].sum()
+months = sorted(expenses["cycle_month"].dropna().unique(), reverse=True)
+month_filter = st.selectbox("Select Month", months)
 
-        fig = px.pie(
-            category_df,
-            values="amount",
-            names="category",
-            title="Expense by Category"
-        )
-        month_filter = st.selectbox("Select Month", expenses["cycle_month"].unique())
+expenses = expenses[expenses["cycle_month"] == month_filter]
 
-        expenses = expenses[expenses["cycle_month"] == month_filter]
+if not salary_data.empty:
+    salary_data = salary_data[salary_data["month"] == month_filter]
 
-        st.plotly_chart(fig, use_container_width=True)
+if not category_budgets.empty:
+    category_budgets = category_budgets[category_budgets["month"] == month_filter]
 
-        st.subheader("📈 Daily Spending Trend")
+total_spent = expenses["amount"].sum()
+total_salary = salary_data["salary"].astype(float).sum() if not salary_data.empty else 0
+remaining = total_salary - total_spent
 
-        expenses["expense_date"] = pd.to_datetime(expenses["expense_date"])
-        daily_df = expenses.groupby(expenses["expense_date"].dt.date)["amount"].sum().reset_index()
-        daily_df.columns = ["date", "amount"]
+col1, col2, col3 = st.columns(3)
+col1.metric("Salary", f"₹{int(total_salary)}")
+col2.metric("Spent", f"₹{int(total_spent)}")
+col3.metric("Remaining", f"₹{int(remaining)}")
 
-        fig2 = px.line(
-            daily_df,
-            x="date",
-            y="amount",
-            markers=True,
-            title="Daily Expense Trend"
-        )
+st.subheader("📊 Category Spending")
 
-        st.plotly_chart(fig2, use_container_width=True)
+category_df = expenses.groupby("category", as_index=False)["amount"].sum()
 
-        st.subheader("🧾 Recent Expenses")
-        st.dataframe(
-            expenses[["expense_date", "amount", "category", "raw_text", "cycle_month"]],
-            use_container_width=True
-        )
-        st.subheader("📊 Budget Usage")
+fig = px.pie(
+    category_df,
+    values="amount",
+    names="category",
+    title="Expense by Category"
+)
 
-        for _, row in budgets.iterrows():
-            cat = row["category"]
-            limit_amt = float(row["limit_amount"])
+st.plotly_chart(fig, use_container_width=True)
 
-            spent = category_df[category_df["category"] == cat]["amount"].sum()
+st.subheader("📈 Daily Spending Trend")
 
-            percent = (spent / limit_amt) * 100 if limit_amt > 0 else 0
+daily_df = (
+    expenses.groupby(expenses["expense_date"].dt.date)["amount"]
+    .sum()
+    .reset_index()
+)
+daily_df.columns = ["date", "amount"]
 
-            st.progress(min(percent/100, 1.0))
-            st.write(f"{cat}: ₹{int(spent)} / ₹{int(limit_amt)}")
+fig2 = px.line(
+    daily_df,
+    x="date",
+    y="amount",
+    markers=True,
+    title="Daily Expense Trend"
+)
+
+st.plotly_chart(fig2, use_container_width=True)
+
+st.subheader("📊 Budget Usage")
+
+if category_budgets.empty:
+    st.info("No category budgets set for this month.")
+else:
+    for _, row in category_budgets.iterrows():
+        cat = row["category"]
+        limit_amt = float(row["limit_amount"])
+
+        spent_series = category_df[category_df["category"] == cat]["amount"]
+        spent = spent_series.sum() if not spent_series.empty else 0
+
+        percent = (spent / limit_amt) * 100 if limit_amt > 0 else 0
+
+        st.write(f"**{cat}**: ₹{int(spent)} / ₹{int(limit_amt)} ({int(percent)}%)")
+        st.progress(min(percent / 100, 1.0))
+
+st.subheader("🧾 Recent Expenses")
+
+st.dataframe(
+    expenses[["expense_date", "amount", "category", "raw_text", "cycle_month"]],
+    use_container_width=True
+)
