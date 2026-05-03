@@ -293,9 +293,11 @@ async def whatsapp(request: Request):
     DASHBOARD_URL = os.getenv("DASHBOARD_URL")
 
     if msg == "dashboard":
-        resp.message(f"📊 Open dashboard:\n{DASHBOARD_URL}")
-        return Response(str(resp), media_type="application/xml")
-
+        if DASHBOARD_URL:
+            resp.message(f"📊 Open dashboard:\n{DASHBOARD_URL}")
+        else:
+            resp.message("⚠️ Dashboard URL not configured.")
+    return Response(str(resp), media_type="application/xml")
     # =========================
     # 🗑 DELETE COMMAND
     # Example: delete / delete 2
