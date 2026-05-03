@@ -403,24 +403,21 @@ async def whatsapp(request: Request):
 def send_daily_summary():
     users = supabase.table("expenses").select("user_phone").execute()
 
-    sent_users = set()
+    if not users.data:
+        return {"status": "no users"}
 
-    for row in users.data:
-        user = row["user_phone"]
+    unique_users = set(row["user_phone"] for row in users.data)
 
-        if user in sent_users:
-            continue
+    from twilio.rest import Client
+    import os
 
+    client = Client(
+        os.getenv("TWILIO_ACCOUNT_SID"),
+        os.getenv("TWILIO_AUTH_TOKEN")
+    )
+
+    for user in unique_users:
         summary = get_monthly_summary(user)
-
-        # send via Twilio
-        from twilio.rest import Client
-        import os
-
-        client = Client(
-            os.getenv("TWILIO_ACCOUNT_SID"),
-            os.getenv("TWILIO_AUTH_TOKEN")
-        )
 
         client.messages.create(
             body=f"📊 Daily Update:\n\n{summary}",
@@ -428,8 +425,4 @@ def send_daily_summary():
             to=f"whatsapp:+{user}"
         )
 
-        sent_users.add(user)
-
     return {"status": "sent"}
-
-    
