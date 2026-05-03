@@ -42,6 +42,10 @@ def detect_category(text, user):
 def home():
     return {"message": "Server is running ✅"}
 
+@app.get("/ping")
+def ping():
+    return {"status": "alive"}
+
 
 @app.post("/whatsapp")
 async def whatsapp(request: Request):
