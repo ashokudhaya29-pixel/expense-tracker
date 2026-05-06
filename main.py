@@ -7,6 +7,7 @@ from llm import extract_expense
 from db import *
 import os
 import re
+from advisor import ask_finance_advisor
 
 port = int(os.environ.get("PORT", 10000))
 
@@ -154,6 +155,17 @@ async def whatsapp(request: Request):
             )
             return Response(str(resp), media_type="application/xml")
 
+    if msg.startswith("ask"):
+        question = body[3:].strip()
+
+        if not question:
+            resp.message("Usage: ask where am I overspending?")
+            return Response(str(resp), media_type="application/xml")
+
+        answer = ask_finance_advisor(user, question)
+        resp.message(answer)
+        return Response(str(resp), media_type="application/xml")
+    
     # =========================
     # 🧠 LEARNING COMMAND
     # Example: learn zepto Grocery

@@ -811,3 +811,39 @@ def detect_spending_anomaly(user):
         )
 
     return None     
+
+def get_expense_context(user):
+    user = clean_user(user)
+    cycle_month = current_month_ist()
+
+    expenses_res = (
+        supabase.table("expenses")
+        .select("*")
+        .eq("user_phone", user)
+        .eq("cycle_month", cycle_month)
+        .eq("is_archived", False)
+        .execute()
+    )
+
+    budgets_res = (
+        supabase.table("category_budgets")
+        .select("*")
+        .eq("user_phone", user)
+        .eq("month", cycle_month)
+        .execute()
+    )
+
+    salary_res = (
+        supabase.table("budgets")
+        .select("*")
+        .eq("user_phone", user)
+        .eq("month", cycle_month)
+        .execute()
+    )
+
+    return {
+        "cycle_month": cycle_month,
+        "expenses": expenses_res.data,
+        "category_budgets": budgets_res.data,
+        "salary": salary_res.data
+    }
