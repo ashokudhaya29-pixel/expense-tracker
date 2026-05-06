@@ -4,7 +4,7 @@ from db import get_expense_context
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel("gemini-1.5-flash-latest")
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 
 def ask_finance_advisor(user, question):
@@ -31,6 +31,9 @@ Give response in this format:
 📊 Reason:
 ✅ Suggestion:
 """
-
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        print("LLM ERROR:", str(e))
+        return "⚠️ AI advisor temporarily unavailable. Please try again later."
