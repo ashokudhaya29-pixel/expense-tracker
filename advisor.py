@@ -1,10 +1,8 @@
 import os
-import google.generativeai as genai
+from groq import Groq
 from db import get_expense_context
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-model = genai.GenerativeModel("gemini-2.0-flash")
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
 def ask_finance_advisor(user, question):
@@ -16,24 +14,35 @@ You are a personal finance assistant.
 User question:
 {question}
 
-User financial data:
+Financial data:
 {context}
 
 Rules:
-- Answer only based on the given data.
-- Be practical and simple.
-- Mention amount/category when possible.
-- If data is not enough, say what is missing.
-- Keep answer short for WhatsApp.
+- Keep response short for WhatsApp
+- Give practical advice
+- Mention categories and amounts when useful
 
-Give response in this format:
+Format:
 💡 Answer:
 📊 Reason:
 ✅ Suggestion:
 """
+
     try:
-        response = model.generate_content(prompt)
-        return response.text
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.3
+            max_tokens=300
+        )
+
+        return completion.choices[0].message.content
+
     except Exception as e:
-        print("LLM ERROR:", str(e))
-        return "⚠️ AI advisor temporarily unavailable. Please try again later."
+        print("GROQ ERROR:", str(e))
+        return "⚠️ AI advisor temporarily unavailable."
