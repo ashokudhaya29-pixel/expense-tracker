@@ -92,60 +92,85 @@ async def whatsapp(request: Request):
             resp.message("❌ Expense cancelled.")
             return Response(str(resp), media_type="application/xml")
 
-        elif msg.startswith("correct") or msg.startswith("update"):
-            print("CORRECTION BLOCK HIT")
-            print("BODY:", body)
+    elif msg.startswith("correct") or msg.startswith("update"):
+        print("CORRECTION BLOCK HIT")
+        print("BODY:", body)
 
+        numbers = re.findall(r"\d+", body)
+
+        if not numbers:
+            resp.message("⚠️ Amount missing. Use: correct 300 Food")
+            return Response(str(resp), media_type="application/xml")
+
+        new_amount = float(numbers[0])
+
+        # =========================
+        # ✅ DYNAMIC CATEGORY PARSER
+        # Supports:
+        # correct 300 Food
+        # correct 300 house_hold
+        # correct 5101 Credit_card
+        # update 500 card
+        # =========================
+        clean_text = body.lower()
+
+        clean_text = clean_text.replace("correct", "")
+        clean_text = clean_text.replace("update", "")
+        clean_text = re.sub(r"\d+", "", clean_text)
+        clean_text = clean_text.replace("=", "")
+        clean_text = clean_text.replace("and save", "")
+        clean_text = clean_text.strip()
+
+        if not clean_text:
+            resp.message("⚠️ Category missing. Use: correct 300 Food")
+            return Response(str(resp), media_type="application/xml")
+
+        learned = get_learned_categories(user)
+        new_category = None
+
+        # 1. Check learned keyword/category first
+        for keyword, cat in learned.items():
+            if keyword.lower() in clean_text:
+                new_category = cat
+                break
+
+        # 2. Otherwise use whatever user typed as category
+        if not new_category:
+            new_category = clean_text
+
+        # Format category nicely
+        new_category = new_category.strip()
+        new_category = new_category.replace(" ", "_")
+        new_category = "_".join(part.capitalize() for part in new_category.split("_") if part)
+
+        try:
+            save_to_sheet(new_amount, new_category, user)
+
+            alert = check_category_budget(user, new_category)
             anomaly = detect_spending_anomaly(user)
 
-            numbers = re.findall(r"\d+", body)
+            message = (
+                f"✅ Corrected and saved:\n\n"
+                f"Amount: ₹{int(new_amount)}\n"
+                f"Category: {new_category}"
+            )
 
-            if not numbers:
-                resp.message("⚠️ Amount missing. Use: correct 300 Food")
-                return Response(str(resp), media_type="application/xml")
+            if alert:
+                message += f"\n\n{alert}"
 
-            new_amount = float(numbers[0])
+            if anomaly:
+                message += f"\n\n{anomaly}"
 
-            valid_categories = [
-                "food", "grocery", "travel", "shopping",
-                "medical", "bills", "emi", "entertainment", "other"
-            ]
+            delete_pending_expense(user)
 
-            new_category = None
-            body_lower = body.lower()
+            resp.message(message)
+            return Response(str(resp), media_type="application/xml")
 
-            for cat in valid_categories:
-                if cat in body_lower:
-                    new_category = cat.capitalize()
-                    break
-
-            if not new_category:
-                resp.message("⚠️ Category missing. Use: correct 300 Food")
-                return Response(str(resp), media_type="application/xml")
-
-            try:
-                save_to_sheet(new_amount, new_category, user)
-                alert = check_category_budget(user, new_category)
-                message = (
-                    f"✅ Corrected and saved:\n\n"
-                    f"Amount: ₹{int(new_amount)}\n"
-                    f"Category: {new_category}"
-                )
-
-                if alert:
-                    message += f"\n\n{alert}"
-
-                   
-                delete_pending_expense(user)
-
-                resp.message(message)
-                return Response(str(resp), media_type="application/xml")
-
-            except Exception as e:
-                print("❌ DB SAVE ERROR:", str(e))
-                resp.message(f"❌ Save error: {str(e)}")
-                return Response(str(resp), media_type="application/xml")
-            
+        except Exception as e:
+            print("❌ DB SAVE ERROR:", str(e))
+            resp.message(f"❌ Save error: {str(e)}")
+            return Response(str(resp), media_type="application/xml")
+                
         else:
             resp.message(
                 "⚠️ Please reply:\n"
