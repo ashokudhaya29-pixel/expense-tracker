@@ -94,9 +94,11 @@ async def whatsapp(request: Request):
     user = form.get("From", "")
     body = form.get("Body", "").strip()
     media_url = form.get("MediaUrl0")
+    
 
     resp = MessagingResponse()
     msg = body.lower().strip()
+    print("📩 MESSAGE RECEIVED:", msg)
 
     print("USER:", user)
     print("BODY:", body)
@@ -316,9 +318,24 @@ async def whatsapp(request: Request):
         return twiml(resp)
 
     if msg == "summary":
-        resp.message(get_monthly_summary(user))
-        return twiml(resp)
+        try:
+            print("📊 SUMMARY BLOCK HIT")
 
+            summary = get_monthly_summary(user)
+
+            print("📊 SUMMARY RESULT:", summary)
+
+            resp.message(summary)
+
+            return twiml(resp)
+
+        except Exception as e:
+            print("❌ SUMMARY ERROR:", str(e))
+
+            resp.message(f"❌ Summary error: {str(e)}")
+
+            return twiml(resp)
+        
     if msg == "weekly":
         resp.message(get_weekly_report(user))
         return twiml(resp)
