@@ -217,20 +217,46 @@ async def whatsapp(request: Request):
             print("📝 Transcription:", text)
 
             if not text:
-                resp.message("❌ Could not understand audio")
+                resp.message("❌ Could not understand audio. Please try again.")
                 return twiml(resp)
 
-            amount, category = extract_expense(text, user)
+            # =========================
+            # SAFE EXTRACTION
+            # =========================
+            try:
+                amount, category = extract_expense(text, user)
+            except Exception as e:
+                print("❌ EXTRACT ERROR:", str(e))
+                amount, category = extract_expense(text, user)
 
-            if amount == 0:
-                for word in text.replace(".", "").split():
-                    if word.isdigit():
-                        amount = float(word)
-                        break
+            # fallback if amount is 0
+            if not amount or amount == 0:
+                fallback_amount, fallback_category = extract_expense(text, user)
+                amount = fallback_amount
 
-            category = detect_category(text, user)
+                if not category or category == "Other":
+                    category = fallback_category
 
-            save_pending_expense(user, amount, category, text)
+            # always detect category again from keywords/learning
+            detected_category = detect_category(text, user)
+            if detected_category and detected_category != "Other":
+                category = detected_category
+
+            if not category:
+                category = "Other"
+
+            print("✅ FINAL AMOUNT:", amount)
+            print("✅ FINAL CATEGORY:", category)
+
+            # =========================
+            # SAVE PENDING SAFELY
+            # =========================
+            try:
+                save_pending_expense(user, amount, category, text)
+            except Exception as e:
+                print("❌ PENDING SAVE ERROR:", str(e))
+                resp.message(f"❌ Could not save pending expense: {str(e)}")
+                return twiml(resp)
 
             resp.message(
                 f"📝 Please confirm:\n\n"
@@ -244,10 +270,9 @@ async def whatsapp(request: Request):
             return twiml(resp)
 
         except Exception as e:
-            print("❌ AUDIO ERROR:", str(e))
-            resp.message("❌ Error processing audio")
+            print("❌ AUDIO FLOW ERROR:", str(e))
+            resp.message(f"❌ Error processing audio: {str(e)}")
             return twiml(resp)
-
     # =========================
     # COMMANDS
     # =========================
