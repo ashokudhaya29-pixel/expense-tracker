@@ -5,14 +5,15 @@ from utils import download_audio
 from speech import speech_to_text
 from llm import extract_expense
 from db import *
+from advisor import ask_finance_advisor
 import os
 import re
-from advisor import ask_finance_advisor
-
-port = int(os.environ.get("PORT", 10000))
 
 app = FastAPI()
 
+
+def twiml(resp):
+    return Response(str(resp), media_type="application/xml")
 
 
 def detect_category(text, user):
@@ -20,7 +21,7 @@ def detect_category(text, user):
 
     learned = get_learned_categories(user)
     for keyword, cat in learned.items():
-        if keyword in text:
+        if keyword.lower() in text:
             return cat
 
     categories = {
@@ -29,19 +30,57 @@ def detect_category(text, user):
         "Travel": ["uber", "ola", "bus", "petrol", "auto"],
         "Shopping": ["amazon", "flipkart", "myntra"],
         "Medical": ["hospital", "medicine", "tablet"],
-        "Bills": ["eb", "electricity", "wifi", "rent", "recharge"]
+        "Bills": ["eb", "electricity", "wifi", "rent", "recharge"],
     }
 
     for cat, words in categories.items():
-        for w in words:
-            if w in text:
+        for word in words:
+            if word in text:
                 return cat
 
-    return "Other"        
+    return "Other"
+
+
+def parse_correction(body, user):
+    numbers = re.findall(r"\d+", body)
+
+    if not numbers:
+        return None, None, "⚠️ Amount missing. Use: correct 300 Food"
+
+    amount = float(numbers[0])
+
+    clean_text = body.lower()
+    clean_text = clean_text.replace("correct", "")
+    clean_text = clean_text.replace("update", "")
+    clean_text = re.sub(r"\d+", "", clean_text)
+    clean_text = clean_text.replace("=", "")
+    clean_text = clean_text.replace("and save", "")
+    clean_text = clean_text.strip()
+
+    if not clean_text:
+        return None, None, "⚠️ Category missing. Use: correct 300 Food"
+
+    learned = get_learned_categories(user)
+    category = None
+
+    for keyword, cat in learned.items():
+        if keyword.lower() in clean_text:
+            category = cat
+            break
+
+    if not category:
+        category = clean_text
+
+    category = category.strip().replace(" ", "_")
+    category = "_".join(part.capitalize() for part in category.split("_") if part)
+
+    return amount, category, None
+
 
 @app.get("/")
 def home():
     return {"message": "Server is running ✅"}
+
 
 @app.get("/ping")
 def ping():
@@ -53,107 +92,32 @@ async def whatsapp(request: Request):
     form = await request.form()
 
     user = form.get("From", "")
-    auto_archive_if_needed(user)
     body = form.get("Body", "").strip()
     media_url = form.get("MediaUrl0")
 
     resp = MessagingResponse()
-
     msg = body.lower().strip()
 
     print("USER:", user)
     print("BODY:", body)
     print("MEDIA:", media_url)
 
-    # =========================
-    # ✅ CONFIRMATION FLOW
-    # =========================
+    auto_archive_if_needed(user)
+
     pending = get_pending_expense(user)
 
+    # =========================
+    # CONFIRMATION FLOW
+    # =========================
     if pending:
-        
         if msg == "yes":
-            save_to_sheet(pending["amount"], pending["category"], user)
+            save_to_sheet(pending["amount"], pending["category"], user, pending.get("raw_text"))
 
             alert = check_category_budget(user, pending["category"])
             anomaly = detect_spending_anomaly(user)
             delete_pending_expense(user)
+
             message = "✅ Expense saved successfully."
-            if alert:
-                message += f"\n\n{alert}"
-            if anomaly:
-                message += f"\n\n{anomaly}"    
-            resp.message(message)
-            return Response(str(resp), media_type="application/xml")
-
-        elif msg == "no":
-            delete_pending_expense(user)
-
-            resp.message("❌ Expense cancelled.")
-            return Response(str(resp), media_type="application/xml")
-
-    elif msg.startswith("correct") or msg.startswith("update"):
-        print("CORRECTION BLOCK HIT")
-        print("BODY:", body)
-
-        numbers = re.findall(r"\d+", body)
-
-        if not numbers:
-            resp.message("⚠️ Amount missing. Use: correct 300 Food")
-            return Response(str(resp), media_type="application/xml")
-
-        new_amount = float(numbers[0])
-
-        # =========================
-        # ✅ DYNAMIC CATEGORY PARSER
-        # Supports:
-        # correct 300 Food
-        # correct 300 house_hold
-        # correct 5101 Credit_card
-        # update 500 card
-        # =========================
-        clean_text = body.lower()
-
-        clean_text = clean_text.replace("correct", "")
-        clean_text = clean_text.replace("update", "")
-        clean_text = re.sub(r"\d+", "", clean_text)
-        clean_text = clean_text.replace("=", "")
-        clean_text = clean_text.replace("and save", "")
-        clean_text = clean_text.strip()
-
-        if not clean_text:
-            resp.message("⚠️ Category missing. Use: correct 300 Food")
-            return Response(str(resp), media_type="application/xml")
-
-        learned = get_learned_categories(user)
-        new_category = None
-
-        # 1. Check learned keyword/category first
-        for keyword, cat in learned.items():
-            if keyword.lower() in clean_text:
-                new_category = cat
-                break
-
-        # 2. Otherwise use whatever user typed as category
-        if not new_category:
-            new_category = clean_text
-
-        # Format category nicely
-        new_category = new_category.strip()
-        new_category = new_category.replace(" ", "_")
-        new_category = "_".join(part.capitalize() for part in new_category.split("_") if part)
-
-        try:
-            save_to_sheet(new_amount, new_category, user)
-
-            alert = check_category_budget(user, new_category)
-            anomaly = detect_spending_anomaly(user)
-
-            message = (
-                f"✅ Corrected and saved:\n\n"
-                f"Amount: ₹{int(new_amount)}\n"
-                f"Category: {new_category}"
-            )
 
             if alert:
                 message += f"\n\n{alert}"
@@ -161,56 +125,89 @@ async def whatsapp(request: Request):
             if anomaly:
                 message += f"\n\n{anomaly}"
 
-            delete_pending_expense(user)
-
             resp.message(message)
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
-        except Exception as e:
-            print("❌ DB SAVE ERROR:", str(e))
-            resp.message(f"❌ Save error: {str(e)}")
-            return Response(str(resp), media_type="application/xml")
-                
-    else:
-            resp.message(
-                "⚠️ Please reply:\n"
-                "yes = save\n"
-                "no = cancel\n"
-                "update <amount> <Category> = update and save"
-            )
-            return Response(str(resp), media_type="application/xml")
+        if msg == "no":
+            delete_pending_expense(user)
+            resp.message("❌ Expense cancelled.")
+            return twiml(resp)
 
+        if msg.startswith("correct") or msg.startswith("update"):
+            try:
+                amount, category, error = parse_correction(body, user)
+
+                if error:
+                    resp.message(error)
+                    return twiml(resp)
+
+                save_to_sheet(amount, category, user, pending.get("raw_text"))
+
+                alert = check_category_budget(user, category)
+                anomaly = detect_spending_anomaly(user)
+                delete_pending_expense(user)
+
+                message = (
+                    f"✅ Corrected and saved:\n\n"
+                    f"Amount: ₹{int(amount)}\n"
+                    f"Category: {category}"
+                )
+
+                if alert:
+                    message += f"\n\n{alert}"
+
+                if anomaly:
+                    message += f"\n\n{anomaly}"
+
+                resp.message(message)
+                return twiml(resp)
+
+            except Exception as e:
+                print("❌ CORRECTION ERROR:", str(e))
+                resp.message(f"❌ Correction error: {str(e)}")
+                return twiml(resp)
+
+        resp.message(
+            "⚠️ Please reply:\n"
+            "yes = save\n"
+            "no = cancel\n"
+            "correct 300 Food = update and save"
+        )
+        return twiml(resp)
+
+    # =========================
+    # AI ADVISOR / RAG
+    # =========================
     if msg.startswith("ask"):
         question = body[3:].strip()
 
         if not question:
             resp.message("Usage: ask where am I overspending?")
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
         answer = ask_finance_advisor(user, question)
         resp.message(answer)
-        return Response(str(resp), media_type="application/xml")
-    
+        return twiml(resp)
+
     # =========================
-    # 🧠 LEARNING COMMAND
-    # Example: learn zepto Grocery
+    # LEARNING
     # =========================
     if msg.startswith("learn"):
         parts = msg.split()
 
         if len(parts) >= 3:
             keyword = parts[1]
-            category = parts[2].capitalize()
+            category = "_".join(parts[2:]).title().replace(" ", "_")
 
             save_learning(user, keyword, category)
             resp.message(f"✅ Learned: {keyword} → {category}")
         else:
             resp.message("Usage: learn <keyword> <category>")
 
-        return Response(str(resp), media_type="application/xml")
+        return twiml(resp)
 
     # =========================
-    # 🎤 AUDIO FLOW
+    # AUDIO FLOW
     # =========================
     if media_url:
         try:
@@ -221,9 +218,10 @@ async def whatsapp(request: Request):
 
             if not text:
                 resp.message("❌ Could not understand audio")
-                return Response(str(resp), media_type="application/xml")
+                return twiml(resp)
 
             amount, category = extract_expense(text, user)
+
             if amount == 0:
                 for word in text.replace(".", "").split():
                     if word.isdigit():
@@ -243,102 +241,79 @@ async def whatsapp(request: Request):
                 f"no = cancel\n"
                 f"correct 500 Food = update and save"
             )
-
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
         except Exception as e:
-            print("❌ ERROR:", str(e))
+            print("❌ AUDIO ERROR:", str(e))
             resp.message("❌ Error processing audio")
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
     # =========================
-    # 💰 SALARY COMMAND
-    # Example: salary 30000
+    # COMMANDS
     # =========================
     if msg.startswith("salary"):
         parts = msg.split()
 
         if len(parts) >= 2 and parts[1].isdigit():
-            salary = int(parts[1])
-            result = set_salary(user, salary)
+            result = set_salary(user, int(parts[1]))
             resp.message(result)
         else:
             resp.message("Usage: salary 50000")
 
-        return Response(str(resp), media_type="application/xml")
+        return twiml(resp)
+
     if msg.startswith("set budget"):
         parts = msg.split()
 
         if len(parts) >= 4:
-            category = parts[2].capitalize()
-            amount = float(parts[3])
-
+            category = "_".join(parts[2:-1]).title().replace(" ", "_")
+            amount = float(parts[-1])
             result = set_category_budget(user, category, amount)
             resp.message(result)
         else:
             resp.message("Usage: set budget Food 10000")
 
-        return Response(str(resp), media_type="application/xml")
+        return twiml(resp)
 
-    # =========================
-    # ➕ ADD SALARY COMMAND
-    # Example: addsalary 5000
-    # =========================
     if msg.startswith("addsalary"):
         parts = msg.split()
 
         if len(parts) >= 2 and parts[1].isdigit():
-            salary = int(parts[1])
-            result = add_salary(user, salary)
+            result = add_salary(user, int(parts[1]))
             resp.message(result)
         else:
             resp.message("Usage: addsalary 5000")
 
-        return Response(str(resp), media_type="application/xml")
+        return twiml(resp)
 
-    # =========================
-    # 💰 BALANCE COMMAND
-    # =========================
     if msg == "balance":
-        report = get_balance_report(user)
-        resp.message(report)
-        return Response(str(resp), media_type="application/xml")
-    
+        resp.message(get_balance_report(user))
+        return twiml(resp)
+
+    if msg == "summary":
+        resp.message(get_monthly_summary(user))
+        return twiml(resp)
+
+    if msg == "weekly":
+        resp.message(get_weekly_report(user))
+        return twiml(resp)
+
     if msg == "insights":
         summary = get_monthly_summary(user)
         compare = compare_months(user)
-
         resp.message(f"{summary}\n\n{compare}")
-        return Response(str(resp), media_type="application/xml")
-
-    # =========================
-    # 📊 SUMMARY COMMAND
-    # =========================
-    if msg == "summary":
-        summary = get_monthly_summary(user)
-        resp.message(summary)
-        return Response(str(resp), media_type="application/xml")
-
-    # =========================
-    # 📅 WEEKLY COMMAND
-    # =========================
-    if msg == "weekly":
-        report = get_weekly_report(user)
-        resp.message(report)
-        return Response(str(resp), media_type="application/xml")
-    
-    DASHBOARD_URL = os.getenv("DASHBOARD_URL")
+        return twiml(resp)
 
     if msg == "dashboard":
-        if DASHBOARD_URL:
-            resp.message(f"📊 Open dashboard:\n{DASHBOARD_URL}")
+        dashboard_url = os.getenv("DASHBOARD_URL")
+
+        if dashboard_url:
+            resp.message(f"📊 Open dashboard:\n{dashboard_url}")
         else:
             resp.message("⚠️ Dashboard URL not configured.")
-    return Response(str(resp), media_type="application/xml")
-    # =========================
-    # 🗑 DELETE COMMAND
-    # Example: delete / delete 2
-    # =========================
+
+        return twiml(resp)
+
     if msg.startswith("delete"):
         parts = msg.split()
 
@@ -347,7 +322,7 @@ async def whatsapp(request: Request):
 
             if not entries:
                 resp.message("⚠️ No entries found")
-                return Response(str(resp), media_type="application/xml")
+                return twiml(resp)
 
             message = "🧾 Last Entries:\n\n"
 
@@ -358,25 +333,19 @@ async def whatsapp(request: Request):
                 message += f"{i}. ₹{amount} - {category} ({date})\n"
 
             message += "\nReply: delete <number>"
-
             resp.message(message)
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
-        elif len(parts) == 2:
+        if len(parts) == 2:
             try:
-                serial = int(parts[1])
-                result = delete_by_serial(user, serial)
+                result = delete_by_serial(user, int(parts[1]))
                 resp.message(result)
             except Exception as e:
                 print("❌ Delete error:", str(e))
                 resp.message("⚠️ Invalid format. Use: delete 2")
 
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
-    # =========================
-    # ✏️ EDIT COMMAND
-    # Example: edit / edit 1 amount 350 / edit 1 category Food
-    # =========================
     if msg.startswith("edit"):
         parts = msg.split()
 
@@ -385,7 +354,7 @@ async def whatsapp(request: Request):
 
             if not entries:
                 resp.message("⚠️ No entries found")
-                return Response(str(resp), media_type="application/xml")
+                return twiml(resp)
 
             message = "✏️ Last Entries:\n\n"
 
@@ -396,11 +365,10 @@ async def whatsapp(request: Request):
                 message += f"{i}. ₹{amount} - {category} ({date})\n"
 
             message += "\nReply:\nedit 1 amount 350\nedit 1 category Grocery"
-
             resp.message(message)
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
-        elif len(parts) >= 4:
+        if len(parts) >= 4:
             try:
                 serial = int(parts[1])
                 field = parts[2]
@@ -408,21 +376,15 @@ async def whatsapp(request: Request):
 
                 result = update_entry_by_serial(user, serial, field, new_value)
                 resp.message(result)
-
             except Exception as e:
                 print("❌ Edit error:", str(e))
                 resp.message("⚠️ Invalid format. Use: edit 1 amount 350")
 
-            return Response(str(resp), media_type="application/xml")
+            return twiml(resp)
 
-        else:
-            resp.message(
-                "Usage:\n"
-                "edit\n"
-                "edit 1 amount 350\n"
-                "edit 1 category Grocery"
-            )
-            return Response(str(resp), media_type="application/xml")
+        resp.message("Usage:\nedit\nedit 1 amount 350\nedit 1 category Grocery")
+        return twiml(resp)
+
     if msg.startswith("archive"):
         parts = msg.split()
 
@@ -432,24 +394,27 @@ async def whatsapp(request: Request):
             result = archive_previous_month(user)
 
         resp.message(result)
-        return Response(str(resp), media_type="application/xml")
-        
+        return twiml(resp)
+
     if msg == "compare":
-        result = compare_months(user)
-        resp.message(result)
-        return Response(str(resp), media_type="application/xml")
+        resp.message(compare_months(user))
+        return twiml(resp)
+
     # =========================
-    # DEFAULT MESSAGE
+    # DEFAULT
     # =========================
     resp.message(
         "Send voice note 🎙️ or type:\n"
         "summary\n"
         "weekly\n"
         "balance\n"
+        "dashboard\n"
+        "ask where am I overspending?\n"
         "salary 50000\n"
         "addsalary 5000"
     )
-    return Response(str(resp), media_type="application/xml")
+    return twiml(resp)
+
 
 @app.get("/send-daily-summary")
 def send_daily_summary():
@@ -461,19 +426,20 @@ def send_daily_summary():
     unique_users = set(row["user_phone"] for row in users.data)
 
     from twilio.rest import Client
-    import os
 
     client = Client(
         os.getenv("TWILIO_ACCOUNT_SID"),
         os.getenv("TWILIO_AUTH_TOKEN")
     )
 
+    from_number = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+
     for user in unique_users:
         summary = get_monthly_summary(user)
 
         client.messages.create(
             body=f"📊 Daily Update:\n\n{summary}",
-            from_="whatsapp:+14155238886",
+            from_=from_number,
             to=f"whatsapp:+{user}"
         )
 
