@@ -38,7 +38,7 @@ Format:
                 }
             ],
             temperature=0.3,
-            max_tokens=300
+            max_tokens=200
         )
 
         return completion.choices[0].message.content
