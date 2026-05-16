@@ -48,7 +48,61 @@ category_budget_res = (
 
 expenses = pd.DataFrame(expenses_res.data)
 salary_data = pd.DataFrame(salary_res.data)
-category_budgets = pd.DataFrame(category_budget_res.data)
+debts = pd.DataFrame(debts_res.data)
+debt_payments = pd.DataFrame(debt_payments_res.data)
+
+if not debts.empty:
+
+    total_debt = debts["remaining_amount"].astype(float).sum()
+
+    st.subheader("💳 Debt Overview")
+
+    d1, d2 = st.columns(2)
+
+    d1.metric("Remaining Debt", f"₹{int(total_debt)}")
+
+    closed_count = len(
+        debts[debts["status"] == "closed"]
+    )
+
+    d2.metric("Closed Debts", closed_count)
+st.subheader("💳 Active Debts")
+
+if debts.empty:
+    st.info("No debt records found.")
+else:
+
+    debt_view = debts[
+        [
+            "debt_name",
+            "total_amount",
+            "remaining_amount",
+            "status"
+        ]
+    ]
+
+    st.dataframe(
+        debt_view,
+        use_container_width=True
+    )
+
+st.subheader("🏦 EMI / Debt Payments")
+
+if debt_payments.empty:
+    st.info("No debt payments found.")
+else:
+
+    st.dataframe(
+        debt_payments[
+            [
+                "payment_date",
+                "amount",
+                "notes",
+                "cycle_month"
+            ]
+        ],
+        use_container_width=True
+    )
 
 if expenses.empty:
     st.warning("No expense records found.")
@@ -64,6 +118,7 @@ expenses = expenses[expenses["cycle_month"] == month_filter]
 
 if not salary_data.empty:
     salary_data = salary_data[salary_data["month"] == month_filter]
+    
 
 if not category_budgets.empty:
     category_budgets = category_budgets[category_budgets["month"] == month_filter]
@@ -127,6 +182,20 @@ else:
         st.progress(min(percent / 100, 1.0))
 
 st.subheader("🧾 Recent Expenses")
+
+debts_res = (
+    supabase.table("debts")
+    .select("*")
+    .eq("user_phone", user_phone)
+    .execute()
+)
+
+debt_payments_res = (
+    supabase.table("debt_payments")
+    .select("*")
+    .eq("user_phone", user_phone)
+    .execute()
+)
 
 st.dataframe(
     expenses[["expense_date", "amount", "category", "raw_text", "cycle_month"]],

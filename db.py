@@ -93,6 +93,7 @@ def check_category_budget(user, category):
 
     return None
 
+
 def get_salary_cycle():
     ist = timezone(timedelta(hours=5, minutes=30))
     today = datetime.now(ist).date()
@@ -841,11 +842,29 @@ def get_expense_context(user):
         .execute()
     )
 
+    debts_res = (
+    supabase.table("debts")
+    .select("*")
+    .eq("user_phone", user)
+    .execute()
+    )
+
+
+    debt_payments_res = (
+        supabase.table("debt_payments")
+        .select("*")
+        .eq("user_phone", user)
+        .execute()
+
+    )
+
     return {
         "cycle_month": cycle_month,
         "expenses": expenses_res.data,
         "category_budgets": budgets_res.data,
-        "salary": salary_res.data
+        "salary": salary_res.data,
+        "debts": debts_res.data,
+        "debt_payments": debt_payments_res.data
     }
 
 def add_debt(user, debt_name, amount, lender=None):
