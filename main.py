@@ -477,7 +477,18 @@ async def whatsapp(request: Request):
         resp.message(compare_months(user))
         return twiml(resp)
     
+    if msg.startswith("move debt"):
+        parts = msg.split()
 
+        if len(parts) >= 4:
+            expense_id = int(parts[2])
+            debt_name = parts[3]
+            result = migrate_expense_to_debt(user, expense_id, debt_name)
+            resp.message(result)
+        else:
+            resp.message("Usage: move debt <expense_id> <debt_name>")
+
+    
     # =========================
     # DEFAULT
     # =========================
@@ -492,19 +503,8 @@ async def whatsapp(request: Request):
         "addsalary 5000"
     )
     return twiml(resp)
-    
-if msg.startswith("move debt"):
-    parts = msg.split()
 
-    if len(parts) >= 4:
-        expense_id = int(parts[2])
-        debt_name = parts[3]
-        result = migrate_expense_to_debt(user, expense_id, debt_name)
-        resp.message(result)
-    else:
-        resp.message("Usage: move debt <expense_id> <debt_name>")
 
-    return twiml(resp)
 
 
 @app.get("/send-daily-summary")
