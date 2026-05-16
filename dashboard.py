@@ -45,6 +45,7 @@ expense_query = (
     supabase.table("expenses")
     .select("*")
     .eq("is_archived", False)
+    .neq("expense_type", "debt")
 )
 
 if selected_phone:
