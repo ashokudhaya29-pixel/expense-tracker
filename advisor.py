@@ -1,6 +1,7 @@
 import os
 from groq import Groq
 from db import get_expense_context
+from db import build_financial_snapshot
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -57,7 +58,49 @@ def ask_finance_advisor(user, question):
             f"✅ Suggestion:\n"
             f"Review your {matched_category} expenses weekly and set a budget if needed."
         )
+    question_lower = question.lower()
+    snapshot = build_financial_snapshot(user)
+    for category, amount in snapshot["category_totals"].items():
+        if category.lower().replace("_", " ") in question_lower:
+            return (
+                f"💡 Answer:\n"
+                f"You have spent ₹{int(amount)} on {category} this cycle.\n\n"
+                f"📊 Reason:\n"
+                f"This is calculated directly from your database records.\n\n"
+                f"✅ Suggestion:\n"
+                f"Monitor {category} spending weekly."
+            )
+    if "debt" in question_lower or "loan" in question_lower or "emi" in question_lower:
+        salary = snapshot["salary"]
+        expenses_total = snapshot["expenses_total"]
+        debt_paid = snapshot["debt_paid"]
+        remaining_debt = snapshot["remaining_debt"]
+        remaining_balance = snapshot["remaining_balance"]
 
+        if remaining_balance > 0:
+            months = round(remaining_debt / remaining_balance, 1) if remaining_debt > 0 else 0
+            months_text = f"Approximately {months} months"
+        else:
+            months_text = "Unable to estimate because current remaining balance is ₹0 or negative."
+
+        if snapshot["active_loans"]:
+            first_loan = snapshot["active_loans"][0]
+            first_loan_text = f"{first_loan['name']} - ₹{int(first_loan['remaining'])}"
+        else:
+            first_loan_text = "No active loans found."
+
+        return (
+            f"💳 Debt Advisor\n\n"
+            f"📊 Remaining Debt: ₹{int(remaining_debt)}\n"
+            f"💰 Salary: ₹{int(salary)}\n"
+            f"💸 Expenses: ₹{int(expenses_total)}\n"
+            f"🏦 Debt Paid This Cycle: ₹{int(debt_paid)}\n"
+            f"📈 Remaining Balance: ₹{int(remaining_balance)}\n\n"
+            f"⏳ Estimated Closure Time:\n"
+            f"{months_text}\n\n"
+            f"✅ Close First:\n"
+            f"{first_loan_text}"
+        )
     prompt = f"""
 You are a personal finance assistant.
 
@@ -144,3 +187,4 @@ def find_category_in_question(question, category_totals):
             return category
 
     return None
+    

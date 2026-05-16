@@ -953,3 +953,122 @@ def get_debt_summary(user):
 
     msg += f"\nTotal Remaining Debt: ₹{int(total_remaining)}"
     return msg
+
+def migrate_expense_to_debt(user, expense_id, debt_name):
+    user = clean_user(user)
+
+    exp_res = (
+        supabase.table("expenses")
+        .select("*")
+        .eq("id", expense_id)
+        .eq("user_phone", user)
+        .execute()
+    )
+
+    if not exp_res.data:
+        return "⚠️ Expense not found."
+
+    expense = exp_res.data[0]
+    amount = float(expense["amount"])
+
+    debt_res = (
+        supabase.table("debts")
+        .select("*")
+        .eq("user_phone", user)
+        .eq("status", "active")
+        .execute()
+    )
+
+    matched_debt = None
+
+    for row in debt_res.data:
+        if debt_name.lower() in row["debt_name"].lower():
+            matched_debt = row
+            break
+
+    if not matched_debt:
+        return f"⚠️ Debt not found: {debt_name}"
+
+    remaining = float(matched_debt["remaining_amount"])
+    new_remaining = max(remaining - amount, 0)
+
+    supabase.table("debt_payments").insert({
+        "user_phone": user,
+        "debt_id": matched_debt["id"],
+        "amount": amount,
+        "notes": f"Migrated from expense #{expense_id}",
+        "cycle_month": expense["cycle_month"]
+    }).execute()
+
+    supabase.table("debts").update({
+        "remaining_amount": new_remaining,
+        "status": "closed" if new_remaining == 0 else "active"
+    }).eq("id", matched_debt["id"]).execute()
+
+    supabase.table("expenses").update({
+        "expense_type": "debt",
+        "linked_debt_name": matched_debt["debt_name"]
+    }).eq("id", expense_id).execute()
+
+    return (
+        f"✅ Expense #{expense_id} moved to debt payment.\n"
+        f"{matched_debt['debt_name']} remaining: ₹{int(new_remaining)}"
+    )
+
+def build_financial_snapshot(user):
+    user = clean_user(user)
+    cycle_month = current_month_ist()
+
+    context = get_expense_context(user)
+
+    expenses = context.get("expenses", [])
+    salary_rows = context.get("salary", [])
+    debts = context.get("debts", [])
+    debt_payments = context.get("debt_payments", [])
+
+    salary_total = sum(float(r.get("salary", 0)) for r in salary_rows)
+
+    expenses_total = 0
+    category_totals = {}
+
+    for row in expenses:
+        amount = float(row.get("amount", 0))
+        category = row.get("category", "Other")
+
+        expenses_total += amount
+        category_totals[category] = category_totals.get(category, 0) + amount
+
+    debt_paid = 0
+    for row in debt_payments:
+        if row.get("cycle_month") == cycle_month:
+            debt_paid += float(row.get("amount", 0))
+
+    overall_spending = expenses_total + debt_paid
+    remaining_balance = salary_total - overall_spending
+
+    active_loans = []
+    remaining_debt = 0
+
+    for row in debts:
+        if row.get("status") == "active":
+            remaining = float(row.get("remaining_amount", 0))
+            remaining_debt += remaining
+
+            active_loans.append({
+                "name": row.get("debt_name"),
+                "remaining": remaining
+            })
+
+    active_loans = sorted(active_loans, key=lambda x: x["remaining"])
+
+    return {
+        "cycle_month": cycle_month,
+        "salary": salary_total,
+        "expenses_total": expenses_total,
+        "debt_paid": debt_paid,
+        "overall_spending": overall_spending,
+        "remaining_balance": remaining_balance,
+        "remaining_debt": remaining_debt,
+        "category_totals": category_totals,
+        "active_loans": active_loans
+    }
