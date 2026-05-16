@@ -509,29 +509,68 @@ async def whatsapp(request: Request):
 
 @app.get("/send-daily-summary")
 def send_daily_summary():
-    users = supabase.table("expenses").select("user_phone").execute()
-
-    if not users.data:
-        return {"status": "no users"}
-
-    unique_users = set(row["user_phone"] for row in users.data)
-
     from twilio.rest import Client
+
+    resp_data = {
+        "users_from_env": [],
+        "sent": [],
+        "failed": []
+    }
+
+    phones_env = os.getenv("MY_PHONES", "")
+
+    unique_users = [
+        p.strip().replace("+", "").replace("whatsapp:", "")
+        for p in phones_env.split(",")
+        if p.strip()
+    ]
+
+    resp_data["users_from_env"] = unique_users
+
+    if not unique_users:
+        return {
+            "status": "no users found in MY_PHONES",
+            "MY_PHONES": phones_env
+        }
 
     client = Client(
         os.getenv("TWILIO_ACCOUNT_SID"),
         os.getenv("TWILIO_AUTH_TOKEN")
     )
 
-    from_number = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+    from_number = os.getenv(
+        "TWILIO_WHATSAPP_FROM",
+        "whatsapp:+14155238886"
+    )
 
     for user in unique_users:
-        summary = get_monthly_summary(user)
+        try:
+            print("📤 SENDING DAILY SUMMARY TO:", user)
 
-        client.messages.create(
-            body=f"📊 Daily Update:\n\n{summary}",
-            from_=from_number,
-            to=f"whatsapp:+{user}"
-        )
+            summary = get_monthly_summary(user)
+            debt = get_debt_summary(user)
 
-    return {"status": "sent"}
+            message_body = f"📊 Daily Update\n\n{summary}\n\n{debt}"
+
+            twilio_msg = client.messages.create(
+                body=message_body,
+                from_=from_number,
+                to=f"whatsapp:+{user}"
+            )
+
+            print("✅ TWILIO MESSAGE SID:", twilio_msg.sid)
+
+            resp_data["sent"].append({
+                "user": user,
+                "sid": twilio_msg.sid
+            })
+
+        except Exception as e:
+            print("❌ DAILY SUMMARY ERROR:", user, str(e))
+
+            resp_data["failed"].append({
+                "user": user,
+                "error": str(e)
+            })
+
+    return resp_data
