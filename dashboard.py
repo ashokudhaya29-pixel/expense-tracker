@@ -112,13 +112,32 @@ else:
         category_budgets = category_budgets[category_budgets["month"] == month_filter]
 
     total_spent = expenses["amount"].sum()
-    total_salary = salary_data["salary"].astype(float).sum() if not salary_data.empty else 0
-    remaining = total_salary - total_spent
+    total_debt_paid = 0
 
-    col1, col2, col3 = st.columns(3)
+    if not debt_payments.empty:
+        total_debt_paid = debt_payments["amount"].astype(float).sum()
+
+    overall_spending = total_spent + total_debt_paid
+    total_salary = salary_data["salary"].astype(float).sum() if not salary_data.empty else 0
+    remaining = total_salary - overall_spending
+    col1, col2, col3, col4 = st.columns(4)
+
     col1.metric("Salary", f"₹{int(total_salary)}")
-    col2.metric("Spent", f"₹{int(total_spent)}")
-    col3.metric("Remaining", f"₹{int(remaining)}")
+
+    col2.metric(
+        "Expenses",
+        f"₹{int(total_spent)}"
+    )
+
+    col3.metric(
+        "Debt Payments",
+        f"₹{int(total_debt_paid)}"
+    )
+
+    col4.metric(
+        "Overall Spending",
+        f"₹{int(overall_spending)}"
+    )
 
     st.subheader("📊 Category Spending")
 
