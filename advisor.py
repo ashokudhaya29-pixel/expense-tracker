@@ -5,6 +5,39 @@ from db import build_financial_snapshot
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+def get_monthly_expense_total(context):
+    expenses = context.get("expenses", [])
+
+    total = 0
+
+    for row in expenses:
+        total += float(row.get("amount", 0))
+
+    return total
+
+
+def get_salary_total(context):
+    salary_data = context.get("salary", [])
+
+    total = 0
+
+    for row in salary_data:
+        total += float(row.get("salary", 0))
+
+    return total
+
+
+def get_total_remaining_debt(context):
+    debts = context.get("debts", [])
+
+    total = 0
+
+    for row in debts:
+        if str(row.get("status", "")).lower() == "active":
+            total += float(row.get("remaining_amount", 0))
+
+    return total
+
 
 def ask_finance_advisor(user, question):
     context = get_expense_context(user)
