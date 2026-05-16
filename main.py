@@ -275,6 +275,40 @@ async def whatsapp(request: Request):
             print("❌ AUDIO FLOW ERROR:", str(e))
             resp.message(f"❌ Error processing audio: {str(e)}")
             return twiml(resp)
+
+    if msg.startswith("debt add"):
+        parts = body.split()
+
+        if len(parts) >= 4:
+            debt_name = parts[2]
+            amount = float(parts[3])
+            result = add_debt(user, debt_name, amount)
+            resp.message(result)
+        else:
+            resp.message("Usage: debt add Muthoot 50000")
+
+        return twiml(resp)
+
+
+    if msg.startswith("emi"):
+        parts = body.split()
+
+        if len(parts) >= 3:
+            debt_name = parts[1]
+            amount = float(parts[2])
+            result = pay_debt(user, debt_name, amount)
+            resp.message(result)
+        else:
+            resp.message("Usage: emi muthoot 3000")
+
+        return twiml(resp)
+
+
+    if msg == "debt":
+        result = get_debt_summary(user)
+        resp.message(result)
+        return twiml(resp)    
+
     # =========================
     # COMMANDS
     # =========================

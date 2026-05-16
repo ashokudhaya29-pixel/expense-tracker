@@ -847,3 +847,90 @@ def get_expense_context(user):
         "category_budgets": budgets_res.data,
         "salary": salary_res.data
     }
+
+def add_debt(user, debt_name, amount, lender=None):
+    user = clean_user(user)
+
+    supabase.table("debts").insert({
+        "user_phone": user,
+        "debt_name": debt_name.title(),
+        "lender": lender or debt_name.title(),
+        "total_amount": amount,
+        "remaining_amount": amount,
+        "status": "active"
+    }).execute()
+
+    return f"✅ Debt added: {debt_name.title()} ₹{int(amount)}"
+
+
+def pay_debt(user, debt_name, amount):
+    user = clean_user(user)
+    debt_name_clean = debt_name.lower()
+
+    res = (
+        supabase.table("debts")
+        .select("*")
+        .eq("user_phone", user)
+        .eq("status", "active")
+        .execute()
+    )
+
+    matched_debt = None
+
+    for row in res.data:
+        if debt_name_clean in row["debt_name"].lower() or debt_name_clean in str(row.get("lender", "")).lower():
+            matched_debt = row
+            break
+
+    if not matched_debt:
+        return f"⚠️ Debt not found for {debt_name}"
+
+    remaining = float(matched_debt["remaining_amount"])
+    new_remaining = max(remaining - float(amount), 0)
+
+    supabase.table("debt_payments").insert({
+        "user_phone": user,
+        "debt_id": matched_debt["id"],
+        "amount": amount,
+        "notes": f"EMI/payment for {debt_name}",
+        "cycle_month": current_month_ist()
+    }).execute()
+
+    supabase.table("debts").update({
+        "remaining_amount": new_remaining,
+        "status": "closed" if new_remaining == 0 else "active"
+    }).eq("id", matched_debt["id"]).execute()
+
+    return (
+        f"✅ EMI paid: ₹{int(amount)}\n"
+        f"{matched_debt['debt_name']} remaining: ₹{int(new_remaining)}"
+    )
+
+
+def get_debt_summary(user):
+    user = clean_user(user)
+
+    res = (
+        supabase.table("debts")
+        .select("*")
+        .eq("user_phone", user)
+        .execute()
+    )
+
+    if not res.data:
+        return "No debt records found."
+
+    total_remaining = 0
+    msg = "💳 Debt Summary\n\n"
+
+    for row in res.data:
+        remaining = float(row["remaining_amount"])
+        total_remaining += remaining
+
+        msg += (
+            f"{row['debt_name']}: ₹{int(remaining)} remaining "
+            f"({row['status']})\n"
+        )
+
+    msg += f"\nTotal Remaining Debt: ₹{int(total_remaining)}"
+    return msg
