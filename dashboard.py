@@ -15,36 +15,52 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 st.set_page_config(page_title="AI Expense Tracker", layout="wide")
 st.title("💰 AI Expense Tracker Dashboard")
 
-phones_env = os.getenv("MY_PHONES", "")
-allowed_phones = [p.strip() for p in phones_env.split(",") if p.strip()]
+user_map_env = os.getenv("USER_MAP", "")
 
-if not allowed_phones:
-    st.error("No users configured. Add MY_PHONES in .env or Streamlit secrets.")
+user_map = {}
+
+for item in user_map_env.split(","):
+    if ":" in item:
+        name, phone = item.split(":")
+        user_map[name.strip()] = phone.strip()
+
+if not user_map:
+    st.error("No users configured. Add USER_MAP in .env or Streamlit secrets.")
     st.stop()
 
-user_phone = st.selectbox("Select User", allowed_phones)
+view_options = ["Overall Expenses"] + list(user_map.keys())
 
-expenses_res = (
+selected_view = st.selectbox("Select View", view_options)
+
+if selected_view == "Overall Expenses":
+    selected_phone = None
+else:
+    selected_phone = user_map[selected_view]
+
+query = (
     supabase.table("expenses")
     .select("*")
-    .eq("user_phone", user_phone)
     .eq("is_archived", False)
-    .execute()
 )
 
-salary_res = (
-    supabase.table("budgets")
-    .select("*")
-    .eq("user_phone", user_phone)
-    .execute()
-)
+if selected_phone:
+    query = query.eq("user_phone", selected_phone)
 
-category_budget_res = (
-    supabase.table("category_budgets")
-    .select("*")
-    .eq("user_phone", user_phone)
-    .execute()
-)
+expenses_res = query.execute()
+
+salary_query = supabase.table("budgets").select("*")
+
+if selected_phone:
+    salary_query = salary_query.eq("user_phone", selected_phone)
+
+salary_res = salary_query.execute()
+
+budget_query = supabase.table("category_budgets").select("*")
+
+if selected_phone:
+    budget_query = budget_query.eq("user_phone", selected_phone)
+
+category_budget_res = budget_query.execute()
 
 expenses = pd.DataFrame(expenses_res.data)
 salary_data = pd.DataFrame(salary_res.data)
@@ -183,19 +199,19 @@ else:
 
 st.subheader("🧾 Recent Expenses")
 
-debts_res = (
-    supabase.table("debts")
-    .select("*")
-    .eq("user_phone", user_phone)
-    .execute()
-)
+debt_query = supabase.table("debts").select("*")
 
-debt_payments_res = (
-    supabase.table("debt_payments")
-    .select("*")
-    .eq("user_phone", user_phone)
-    .execute()
-)
+if selected_phone:
+    debt_query = debt_query.eq("user_phone", selected_phone)
+
+debts_res = debt_query.execute()
+
+debt_payment_query = supabase.table("debt_payments").select("*")
+
+if selected_phone:
+    debt_payment_query = debt_payment_query.eq("user_phone", selected_phone)
+
+debt_payments_res = debt_payment_query.execute()
 
 st.dataframe(
     expenses[["expense_date", "amount", "category", "raw_text", "cycle_month"]],
